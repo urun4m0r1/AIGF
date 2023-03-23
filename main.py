@@ -1,4 +1,8 @@
+import os
+import json
 import openai
+from base64 import b64decode
+from pathlib import Path
 from configparser import ConfigParser
 
 SETTINGS_PATH = 'settings.ini'
@@ -93,7 +97,49 @@ def talk_to_ai():
         conversation.record_history('\n')
 
 
+DATA_DIR = Path.cwd() / 'data'
+IMAGE_DIR = Path.cwd() / 'images'
+T2I_PROMPT = "Girl in spacesuit, spaceship inside, Tsutomu Nihei style, Sidonia no Kishi, gigantism, laser generator, multi-story space, futuristic style, Sci-fi, hyperdetail, laser in center, laser from the sky, energy clots, acceleration, light flash, speed, anime, drawing, 8K, HD, super-resolution, manga graphics, Drawing, First-Person, 8K, HD, Super-Resolution"
+
+DATA_DIR.mkdir(exist_ok=True)
+IMAGE_DIR.mkdir(exist_ok=True)
+
+
+def request_image():
+    t2i_response = openai.Image.create(
+        prompt=T2I_PROMPT,
+        n=4,
+        size="512x512",
+        response_format="b64_json",
+    )
+
+    file_name = DATA_DIR / f"{T2I_PROMPT[:5]}-{t2i_response['created']}.json"
+
+    with open(file_name, 'w', encoding='utf-8') as file:
+        json.dump(t2i_response, file)
+
+
+def download_image():
+    json_path = find_json_path()
+    with open(json_path, mode="r", encoding="utf-8") as file:
+        response = json.load(file)
+
+    for index, image_dict in enumerate(response["data"]):
+        image_data = b64decode(image_dict["b64_json"])
+        image_file = IMAGE_DIR / f"{json_path.stem}-{index}.png"
+        with open(image_file, mode="wb") as png:
+            png.write(image_data)
+
+
+def find_json_path():
+    for file in DATA_DIR.iterdir():
+        if file.suffix == '.json':
+            return file
+
+
 if __name__ == '__main__':
     settings = OpenAISettings(SETTINGS_PATH)
     settings.setup_openai_api_key()
-    talk_to_ai()
+    # talk_to_ai()
+    request_image()
+    download_image()
