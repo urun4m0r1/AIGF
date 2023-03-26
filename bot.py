@@ -1,10 +1,10 @@
 from config import AppConfig
-from conversation import OpenAIConversation
+import conversation as conv
 import discord
 from discord import app_commands
 
 config = AppConfig()
-conversation = OpenAIConversation(config)
+ai_conversation = conv.OpenAIConversation(config)
 
 
 def reset_config():
@@ -13,8 +13,8 @@ def reset_config():
 
 
 def reset_conversation():
-    global conversation
-    conversation = OpenAIConversation(config)
+    global ai_conversation
+    ai_conversation = conv.OpenAIConversation(config)
 
 
 # Set intents to receive message content
@@ -56,57 +56,75 @@ async def stop():
 @tree.command(name="대화", description="인공지능과 대화", guilds=config.server_guilds)
 @app_commands.describe(message="메시지")
 async def __send_message(__interaction: discord.Interaction, message: str):
-    print(f"Received message: {message}")
+    print("Receiving message...")
 
     await __interaction.response.defer()
-    __result = await conversation.process(message)
+    __result = await ai_conversation.process(message)
     await __interaction.followup.send(__result)
 
-    print(f"Sent message: {__result}")
+    print("Message sent.")
 
 
 @tree.command(name="정리", description="대화 내용 비우기", guilds=config.server_guilds)
 async def __clear(__interaction: discord.Interaction):
     print("Clearing conversation...")
 
-    conversation.clear()
-    await __interaction.response.send_message("대화 내용이 비워졌습니다.")
-
-
-@tree.command(name="이름", description="이름 변경", guilds=config.server_guilds)
-@app_commands.describe(user="유저 이름", ai="AI 이름")
-async def __rename(__interaction: discord.Interaction, user: str, ai: str):
-    print(f"Renaming user: {user} and AI: {ai}")
-
-    config.user_name = user
-    config.ai_name = ai
-
-    conversation.clear()
-    await __interaction.response.send_message("설정이 변경되었습니다.")
-
-
-@tree.command(name="설정", description="설정 변경", guilds=config.server_guilds)
-@app_commands.describe(engine="EngineName", temperature="Temperature", tokens="MaxTokens", p="TopP",
-                       frequency="FrequencyPenalty", presence="PresencePenalty")
-async def __config(__interaction: discord.Interaction,
-                   engine: str, temperature: float, tokens: int, p: float, frequency: float, presence: float):
-    print(f"Changing config: {engine}, {temperature}, {tokens}, {p}, {frequency}, {presence}")
-
-    config.engine_name = engine
-    config.temperature = temperature
-    config.max_tokens = tokens
-    config.top_p = p
-    config.frequency_penalty = frequency
-    config.presence_penalty = presence
-
-    conversation.clear()
-    await __interaction.response.send_message("설정이 변경되었습니다.")
+    ai_conversation.clear()
+    await __interaction.response.send_message("[대화 내용이 비워졌습니다]")
 
 
 @tree.command(name="초기화", description="설정 초기화", guilds=config.server_guilds)
-async def __clear(__interaction: discord.Interaction):
+async def __reset(__interaction: discord.Interaction):
     print("Resetting config and conversation...")
 
     reset_config()
     reset_conversation()
-    await __interaction.response.send_message("설정이 초기화되었습니다.")
+    await __interaction.response.send_message("[설정이 초기화되었습니다]")
+
+
+@tree.command(name="이름", description="이름 변경", guilds=config.server_guilds)
+@app_commands.describe(user="당신 이름", ai="상대 이름")
+async def __rename(__interaction: discord.Interaction, user: str, ai: str):
+    print(f"Renaming names...")
+    __previous_user = config.user_name
+    __previous_ai = config.ai_name
+    ai_conversation.replace_name(user, ai)
+
+    __message = f"""[이름이 변경되었습니다]
+- 당신: {__previous_user} -> {user}
+- 상대: {__previous_ai} -> {ai}"""
+    await __interaction.response.send_message(__message)
+
+
+@tree.command(name="설정", description="설정 변경", guilds=config.server_guilds)
+@app_commands.describe(
+    creativity="창의력", intelligence="지능", personality="성격",
+    mood="기분", reputation="평판", age="나이", relationship="관계", title="호칭")
+@app_commands.choices(
+    creativity=conv.creativities, intelligence=conv.intelligences, personality=conv.persornalities,
+    mood=conv.moods, reputation=conv.reputations, age=conv.ages, relationship=conv.relationships)
+async def __config(__interaction: discord.Interaction,
+                   creativity: int, intelligence: int, personality: int,
+                   mood: int, reputation: int, age: int, relationship: int, title: str):
+    print("Changing config...")
+    ai_conversation.change_creativity(creativity)
+    ai_conversation.change_intelligence(intelligence)
+    ai_conversation.change_personality(personality)
+    ai_conversation.change_mood(mood)
+    ai_conversation.change_reputation(reputation)
+    ai_conversation.change_age(age)
+    ai_conversation.change_relationship(relationship)
+    ai_conversation.change_title(title)
+
+    ai_conversation.clear()
+
+    __message = f"""[설정이 변경되었습니다]
+- 창의력: {conv.creativities[creativity].name}
+- 지능: {conv.intelligences[intelligence].name}
+- 성격: {conv.persornalities[personality].name}
+- 기분: {conv.moods[mood].name}
+- 평판: {conv.reputations[reputation].name}
+- 나이: {conv.ages[age].name}
+- 관계: {conv.relationships[relationship].name}
+- 호칭: {title}"""
+    await __interaction.response.send_message(__message)
