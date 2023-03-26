@@ -265,6 +265,27 @@ files = [
 ]
 
 [[package]]
+name = "discord-py"
+version = "2.2.2"
+description = "A Python wrapper for the Discord API"
+category = "main"
+optional = false
+python-versions = ">=3.8.0"
+files = [
+    {file = "discord.py-2.2.2-py3-none-any.whl", hash = "sha256:38fc52a784727b8e5e5749267089400035b187a009028eddfabeb182abcc6d52"},
+    {file = "discord.py-2.2.2.tar.gz", hash = "sha256:b9944056bcb5711b2d04088848fd004466cf117c15c84fa798bf55470f28275f"},
+]
+
+[package.dependencies]
+aiohttp = ">=3.7.4,<4"
+
+[package.extras]
+docs = ["sphinx (==4.4.0)", "sphinxcontrib-trio (==1.1.2)", "sphinxcontrib-websupport", "typing-extensions (>=4.3,<5)"]
+speed = ["Brotli", "aiodns (>=1.1)", "cchardet (==2.1.7)", "orjson (>=3.5.4)"]
+test = ["coverage[toml]", "pytest", "pytest-asyncio", "pytest-cov", "pytest-mock", "typing-extensions (>=4.3,<5)"]
+voice = ["PyNaCl (>=1.3.0,<1.6)"]
+
+[[package]]
 name = "frozenlist"
 version = "1.3.3"
 description = "A list-like structure which implements collections.abc.MutableSequence"
@@ -618,4 +639,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "09d60ac9048e5866181b0abe7512d24bdfad13b077b733bcfb17f2d7966d155a"
+content-hash = "cc8af3a48b75ef1ec027a08082d858e59c2777c773813a615bea6e91ee9384b5"
