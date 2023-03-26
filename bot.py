@@ -96,16 +96,17 @@ async def __rename(__interaction: discord.Interaction, user: str, ai: str):
     await __interaction.response.send_message(__message)
 
 
+# TODO: 전부 필수 인자가 아닌 선택적 인자로 변경
 @tree.command(name="설정", description="설정 변경", guilds=config.server_guilds)
 @app_commands.describe(
     creativity="창의력", intelligence="지능", personality="성격",
-    mood="기분", reputation="평판", age="나이", relationship="관계", title="호칭")
+    mood="기분", reputation="평판", age="나이", relationship="관계", title="호칭", extra="추가 설정")
 @app_commands.choices(
     creativity=conv.creativities, intelligence=conv.intelligences, personality=conv.persornalities,
     mood=conv.moods, reputation=conv.reputations, age=conv.ages, relationship=conv.relationships)
 async def __config(__interaction: discord.Interaction,
                    creativity: int, intelligence: int, personality: int,
-                   mood: int, reputation: int, age: int, relationship: int, title: str):
+                   mood: int, reputation: int, age: int, relationship: int, title: str, extra: str):
     print("Changing config...")
     ai_conversation.change_creativity(creativity)
     ai_conversation.change_intelligence(intelligence)
@@ -115,6 +116,7 @@ async def __config(__interaction: discord.Interaction,
     ai_conversation.change_age(age)
     ai_conversation.change_relationship(relationship)
     ai_conversation.change_title(title)
+    ai_conversation.change_extra(extra)
 
     ai_conversation.clear()
 
@@ -126,5 +128,6 @@ async def __config(__interaction: discord.Interaction,
 - 평판: {conv.reputations[reputation].name}
 - 나이: {conv.ages[age].name}
 - 관계: {conv.relationships[relationship].name}
-- 호칭: {title}"""
+- 호칭: {title}
+- 추가 설정: {extra}"""
     await __interaction.response.send_message(__message)

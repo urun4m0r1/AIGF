@@ -13,7 +13,7 @@ class OpenAIConversation:
         self.__response = None
 
     def __record(self, __prompt: str):
-        self.__full_prompt += __prompt
+        self.__full_prompt += __prompt # TODO: rolling_prompt_record 적용
 
     def __read(self) -> str:
         return self.__response.choices[0].text.strip()
@@ -24,7 +24,7 @@ class OpenAIConversation:
             engine=self.__config.engine_name,
             prompt=self.__full_prompt,
             temperature=self.__config.temperature,
-            max_tokens=self.__config.max_tokens,
+            max_tokens=self.__config.max_tokens, # TODO: dynamic_max_tokens 적용
             top_p=self.__config.top_p,
             frequency_penalty=self.__config.frequency_penalty,
             presence_penalty=self.__config.presence_penalty,
@@ -54,6 +54,7 @@ class OpenAIConversation:
         self.__config.temperature = creativity / 4
         pass
 
+    # TODO: 기능 구현
     def change_intelligence(self, intelligence):
         pass
 
@@ -73,6 +74,9 @@ class OpenAIConversation:
         pass
 
     def change_title(self, title):
+        pass
+
+    def change_extra(self, extra):
         pass
 
 
