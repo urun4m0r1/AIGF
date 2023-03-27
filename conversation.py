@@ -50,33 +50,32 @@ class OpenAIConversation:
         self.__full_prompt = self.__config.formatted_prompt
         self.__response = None
 
-    def change_creativity(self, creativity):
+    def change_creativity(self, creativity: int):
         self.__config.temperature = creativity / 4
-        pass
 
     # TODO: 기능 구현
-    def change_intelligence(self, intelligence):
+    def change_intelligence(self, intelligence: int):
         pass
 
-    def change_personality(self, personality):
+    def change_personality(self, personality: int):
         pass
 
-    def change_mood(self, mood):
+    def change_mood(self, mood: int):
         pass
 
-    def change_reputation(self, reputation):
+    def change_reputation(self, reputation: int):
         pass
 
-    def change_age(self, age):
+    def change_age(self, age: int):
         pass
 
-    def change_relationship(self, relationship):
+    def change_relationship(self, relationship: int):
         pass
 
-    def change_title(self, title):
+    def change_title(self, title: str):
         pass
 
-    def change_extra(self, extra):
+    def change_extra(self, extra: str):
         pass
 
 
