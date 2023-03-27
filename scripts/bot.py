@@ -186,5 +186,4 @@ async def _config(interaction: discord.Interaction,
     await interaction.response.send_message(message)
 
 # TODO: 인격 슬롯 3개 변경 가능하게 추가
-# TODO: 나레이션 삽입 기능 추가
 # TODO: 리롤 버튼 추가

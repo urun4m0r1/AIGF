@@ -16,16 +16,24 @@ class OpenAIConversation:
         self._full_prompt = self._config.prompt_history
 
     async def _predict(self) -> str:
-        response = await openai.Completion.acreate(
-            engine=self._config.engine_name,
-            prompt=self._full_prompt,
-            temperature=self._get_temperature(),
-            max_tokens=self._config.max_tokens,  # TODO: dynamic_max_tokens 적용
-            top_p=self._config.top_p,
-            frequency_penalty=self._config.frequency_penalty,
-            presence_penalty=self._config.presence_penalty,
-            stop=[f'{self._cache.user_name}:', f'{self._cache.ai_name}:'],
-        )
+        try:
+            response = await openai.Completion.acreate(
+                engine=self._config.engine_name,
+                prompt=self._full_prompt,
+                temperature=self._get_temperature(),
+                max_tokens=self._config.max_tokens,  # TODO: dynamic_max_tokens 적용
+                top_p=self._config.top_p,
+                frequency_penalty=self._config.frequency_penalty,
+                presence_penalty=self._config.presence_penalty,
+                stop=[f'{self._cache.user_name}:', f'{self._cache.ai_name}:'],
+            )
+        except openai.error.InvalidRequestError as e:
+            print(e)
+            self.reset_prompt()
+            return "[대화 한계에 도달했습니다. 대화 내용을 초기화합니다.]"
+        except Exception as e:
+            print(e)
+            return "[응답을 처리하지 못했습니다]"
 
         return response.choices[0].text.strip()
 
