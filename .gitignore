@@ -291,4 +291,4 @@ pyrightconfig.json
 # AIGF
 settings.ini
 run.bat
-prompt_history.txt
+.temp/

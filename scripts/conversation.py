@@ -1,57 +1,68 @@
 import openai
-from config import AppConfig
 from discord import app_commands
+
+from config.config import AppConfig
+from utils import file_io
 
 
 class OpenAIConversation:
-    def __init__(self, __config: AppConfig):
-        self.__config = __config
-        openai.organization = self.__config.organization_id
-        openai.api_key = self.__config.api_key
+    def __init__(self, _config: AppConfig):
+        self._config = _config
+        self._cache = _config.cache
 
-        self.__full_prompt = self.__config.formatted_prompt
-        self.__response = None
+        openai.organization = self._config.organization_id
+        openai.api_key = self._config.api_key
 
-    def __record(self, __prompt: str):
-        self.__full_prompt += __prompt # TODO: rolling_prompt_record 적용
+        self._full_prompt = self._config.prompt_history
 
-    def __read(self) -> str:
-        return self.__response.choices[0].text.strip()
-
-    async def __predict(self, __prompt: str):
-        self.__record(f"{self.__config.user_name}: {__prompt}\n{self.__config.ai_name}:")
-        self.__response = await openai.Completion.acreate(
-            engine=self.__config.engine_name,
-            prompt=self.__full_prompt,
-            temperature=self.__config.temperature,
-            max_tokens=self.__config.max_tokens, # TODO: dynamic_max_tokens 적용
-            top_p=self.__config.top_p,
-            frequency_penalty=self.__config.frequency_penalty,
-            presence_penalty=self.__config.presence_penalty,
-            stop=[f'{self.__config.user_name}:', f'{self.__config.ai_name}:'],
+    async def _predict(self) -> str:
+        response = await openai.Completion.acreate(
+            engine=self._config.engine_name,
+            prompt=self._full_prompt,
+            temperature=self._get_temperature(),
+            max_tokens=self._config.max_tokens,  # TODO: dynamic_max_tokens 적용
+            top_p=self._config.top_p,
+            frequency_penalty=self._config.frequency_penalty,
+            presence_penalty=self._config.presence_penalty,
+            stop=[f'{self._cache.user_name}:', f'{self._cache.ai_name}:'],
         )
 
-        self.__record(f" {self.__read()}\n")
+        return response.choices[0].text.strip()
 
-        print(self.__full_prompt)
-        print("=====================================")
+    def _get_temperature(self) -> float:
+        return self._cache.creativity / 4
 
-    async def process(self, __message: str) -> str:
-        await self.__predict(__message)
-        return f"{self.__config.user_name}: {__message}\n{self.__config.ai_name}: {self.__read()}"
+    def _save_history(self):
+        file_io.save_txt(self._config.prompt_history_path, self._full_prompt)
 
-    def replace_name(self, __user_name: str, __ai_name: str):
-        self.__full_prompt = self.__full_prompt.replace(self.__config.user_name, __user_name)
-        self.__full_prompt = self.__full_prompt.replace(self.__config.ai_name, __ai_name)
-        self.__config.user_name = __user_name
-        self.__config.ai_name = __ai_name
+    async def predict_answer(self, message: str) -> str:
+        self.record_prompt(f"{self._cache.user_name}: {message}\n{self._cache.ai_name}:")
+        answer = await self._predict()
+        self.record_prompt(f" {answer}\n")
+        return answer
 
-    def clear(self):
-        self.__full_prompt = self.__config.formatted_prompt
-        self.__response = None
+    def record_prompt(self, prompt: str):
+        self._full_prompt += prompt  # TODO: rolling_prompt_record 적용
+        self._save_history()
+
+    def replace_prompt_text(self, old_text: str, new_text: str):
+        self._full_prompt = self._full_prompt.replace(old_text, new_text)
+        self._save_history()
+
+    def replace_names(self, user_name: str, ai_name: str):
+        self.replace_prompt_text(self._cache.user_name, user_name)
+        self.replace_prompt_text(self._cache.ai_name, ai_name)
+        self._cache.user_name = user_name
+        self._cache.ai_name = ai_name
+        self._cache.save()
+
+    def reset_prompt(self):
+        self._full_prompt = self._cache.get_initial_prompt()
+        self._save_history()
 
     def change_creativity(self, creativity: int):
-        self.__config.temperature = creativity / 4
+        self._cache.creativity = creativity
+        self._cache.save()
 
     # TODO: 기능 구현
     def change_intelligence(self, intelligence: int):
