@@ -38,7 +38,10 @@ async def on_ready():
 
     print("Syncing server commands...")
     for guild in config.server_guilds:
-        await tree.sync(guild=guild)
+        try:
+            await tree.sync(guild=guild)
+        except discord.errors.Forbidden:
+            print(f"Failed to sync commands in '{guild.id}' due to insufficient permissions.")
 
     print("Discord Bot is ready.")
 
