@@ -111,6 +111,22 @@ async def _replace_names(interaction: discord.Interaction, user_name: str, ai_na
     await interaction.response.send_message(message)
 
 
+@tree.command(name="스왑", description="이름 스왑", guilds=config.server_guilds)
+@app_commands.describe()
+async def _replace_names(interaction: discord.Interaction):
+    print("[Command] Swapping...")
+
+    previous_user = config.cache.user_name
+    previous_ai = config.cache.ai_name
+    ai.replace_names("TEMP", previous_user)
+    ai.replace_names(previous_ai, previous_user)
+
+    message = f"""[이름이 변경되었습니다]
+- 당신: {previous_user} -> {previous_ai}
+- 상대: {previous_ai} -> {previous_user}"""
+    await interaction.response.send_message(message)
+
+
 @tree.command(name="정리", description="대화 내용 비우기", guilds=config.server_guilds)
 async def _reset_prompt(interaction: discord.Interaction):
     print("[Command] Clearing conversation...")
@@ -191,3 +207,4 @@ async def _config(interaction: discord.Interaction,
 
 # TODO: 인격 슬롯 3개 변경 가능하게 추가
 # TODO: 리롤 버튼 추가
+# TODO: AI랑 순서 바꾸는 기능 추가
