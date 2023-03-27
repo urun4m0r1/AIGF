@@ -60,6 +60,12 @@ async def stop():
     print("[System] Discord Bot stopped.")
 
 
+def format_message(message: str, answer: str) -> str:
+    user_name = config.cache.user_name
+    ai_name = config.cache.ai_name
+    return f"**{user_name}**: {message}\n**{ai_name}**: {answer}"
+
+
 @tree.command(name="대화", description="인공지능과 대화", guilds=config.server_guilds)
 @app_commands.describe(message="메시지")
 async def _send_message(interaction: discord.Interaction, message: str):
@@ -67,9 +73,7 @@ async def _send_message(interaction: discord.Interaction, message: str):
 
     await interaction.response.defer()
     answer = await ai.predict_answer(message)
-    user_name = config.cache.user_name
-    ai_name = config.cache.ai_name
-    await interaction.followup.send(f"**{user_name}**: {message}\n**{ai_name}**: {answer}")
+    await interaction.followup.send(format_message(message, answer))
 
     print("[Command] Message sent.")
 
