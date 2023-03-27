@@ -69,6 +69,10 @@ class OpenAIConversation:
         self._full_prompt = self._cache.get_initial_prompt()
         self._save_history()
 
+    def erase_prompt(self):
+        self._full_prompt = ""
+        self._save_history()
+
     def change_creativity(self, creativity: int):
         self._cache.creativity = creativity
         self._cache.save()

@@ -112,8 +112,7 @@ async def _replace_names(interaction: discord.Interaction, user_name: str, ai_na
 
 
 @tree.command(name="스왑", description="이름 스왑", guilds=config.server_guilds)
-@app_commands.describe()
-async def _replace_names(interaction: discord.Interaction):
+async def _swap_names(interaction: discord.Interaction):
     print("[Command] Swapping...")
 
     previous_user = config.cache.user_name
@@ -125,6 +124,16 @@ async def _replace_names(interaction: discord.Interaction):
 - 당신: {previous_user} -> {previous_ai}
 - 상대: {previous_ai} -> {previous_user}"""
     await interaction.response.send_message(message)
+
+
+@tree.command(name="상식개변", description="모든 조교 제거", guilds=config.server_guilds)
+@app_commands.describe(prompt="초기 조교 프롬프트")
+async def _erase_prompt(interaction: discord.Interaction, prompt: str):
+    print("[Command] Clearing all conversation...")
+
+    ai.erase_prompt()
+    ai.record_prompt(prompt)
+    await interaction.response.send_message(f"[완전히 새로운 프롬프트가 기록되었습니다]\n{prompt}")
 
 
 @tree.command(name="정리", description="대화 내용 비우기", guilds=config.server_guilds)
