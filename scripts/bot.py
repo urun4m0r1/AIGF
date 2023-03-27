@@ -185,31 +185,31 @@ async def _config(interaction: discord.Interaction,
     content = ""
     if creativity is not None:
         ai.change_creativity(creativity)
-        content += f"- 창의력: {conv.creativities[creativity].name}"
+        content += f"- 창의력: {conv.creativities[creativity].name}\n"
     if intelligence is not None:
         ai.change_intelligence(intelligence)
-        content += f"- 지능: {conv.intelligences[intelligence].name}"
+        content += f"- 지능: {conv.intelligences[intelligence].name}\n"
     if personality is not None:
         ai.change_personality(personality)
-        content += f"- 성격: {conv.persornalities[personality].name}"
+        content += f"- 성격: {conv.persornalities[personality].name}\n"
     if mood is not None:
         ai.change_mood(mood)
-        content += f"- 기분: {conv.moods[mood].name}"
+        content += f"- 기분: {conv.moods[mood].name}\n"
     if reputation is not None:
         ai.change_reputation(reputation)
-        content += f"- 평판: {conv.reputations[reputation].name}"
+        content += f"- 평판: {conv.reputations[reputation].name}\n"
     if age is not None:
         ai.change_age(age)
-        content += f"- 나이: {conv.ages[age].name}"
+        content += f"- 나이: {conv.ages[age].name}\n"
     if relationship is not None:
         ai.change_relationship(relationship)
-        content += f"- 관계: {conv.relationships[relationship].name}"
+        content += f"- 관계: {conv.relationships[relationship].name}\n"
     if title is not None:
         ai.change_title(title)
-        content += f"- 호칭: {title}"
+        content += f"- 호칭: {title}\n"
     if extra is not None:
         ai.change_extra(extra)
-        content += f"- 추가 설정: {extra}"
+        content += f"- 추가 설정: {extra}\n"
 
     message = f"[설정이 변경되었습니다]\n{content}"
     await interaction.response.send_message(message)
