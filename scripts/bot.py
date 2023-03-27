@@ -1,8 +1,8 @@
 import discord
 from discord import app_commands
 
-import conversation as conv
-from config.config import AppConfig
+from scripts import conversation as conv
+from settings.config import AppConfig
 
 config = AppConfig()
 config.cache.load()
@@ -69,13 +69,13 @@ async def _send_message(interaction: discord.Interaction, message: str):
     answer = await ai.predict_answer(message)
     user_name = config.cache.user_name
     ai_name = config.cache.ai_name
-    await interaction.followup.send(f"***{user_name}**: {message}*\n**{ai_name}**: {answer}")
+    await interaction.followup.send(f"**{user_name}**: {message}\n**{ai_name}**: {answer}")
 
     print("[Command] Message sent.")
 
 
 @tree.command(name="기록", description="대화 마지막에 이어서 문장을 삽입", guilds=config.server_guilds)
-@app_commands.describe(content="내용")
+@app_commands.describe(prompt="프롬프트")
 async def _record_prompt(interaction: discord.Interaction, prompt: str):
     print("[Command] Recording message...")
 
@@ -119,8 +119,8 @@ async def _reset_prompt(interaction: discord.Interaction):
 async def _reset_config(interaction: discord.Interaction):
     print("[Command] Resetting config...")
 
-    ai.reset_prompt()
     reset_config()
+    ai.reset_prompt()
     await interaction.response.send_message("[모든 설정이 초기화되었습니다]")
 
 
@@ -181,8 +181,6 @@ async def _config(interaction: discord.Interaction,
     if extra is not None:
         ai.change_extra(extra)
         content += f"- 추가 설정: {extra}"
-
-    ai.reset_prompt()
 
     message = f"[설정이 변경되었습니다]\n{content}"
     await interaction.response.send_message(message)

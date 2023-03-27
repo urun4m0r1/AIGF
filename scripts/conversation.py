@@ -1,7 +1,7 @@
 import openai
 from discord import app_commands
 
-from config.config import AppConfig
+from settings.config import AppConfig
 from utils import file_io
 
 
