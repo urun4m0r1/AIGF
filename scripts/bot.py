@@ -71,6 +71,7 @@ def format_message(message: str, answer: str) -> str:
 async def _send_message(interaction: discord.Interaction, message: str):
     print("[Command] Receiving message...")
 
+    # noinspection PyUnresolvedReferences
     await interaction.response.defer()
     answer = await ai.predict_answer(message)
     await interaction.followup.send(format_message(message, answer))
@@ -84,6 +85,7 @@ async def _record_prompt(interaction: discord.Interaction, prompt: str):
     print("[Command] Recording message...")
 
     ai.record_prompt(f"\n{prompt}\n\n")
+    # noinspection PyUnresolvedReferences
     await interaction.response.send_message(f"[프롬프트가 기록되었습니다]\n{prompt}")
 
 
@@ -93,6 +95,7 @@ async def _replace_prompt_text(interaction: discord.Interaction, before: str, af
     print("[Command] Replacing words...")
 
     ai.replace_prompt_text(before, after)
+    # noinspection PyUnresolvedReferences
     await interaction.response.send_message(f"[단어를 치환했습니다]\n{before} -> {after}")
 
 
@@ -108,6 +111,7 @@ async def _replace_names(interaction: discord.Interaction, user_name: str, ai_na
     message = f"""[이름이 변경되었습니다]
 - 당신: {previous_user} -> {user_name}
 - 상대: {previous_ai} -> {ai_name}"""
+    # noinspection PyUnresolvedReferences
     await interaction.response.send_message(message)
 
 
@@ -123,6 +127,7 @@ async def _swap_names(interaction: discord.Interaction):
     message = f"""[이름이 변경되었습니다]
 - 당신: {previous_user} -> {previous_ai}
 - 상대: {previous_ai} -> {previous_user}"""
+    # noinspection PyUnresolvedReferences
     await interaction.response.send_message(message)
 
 
@@ -133,6 +138,7 @@ async def _erase_prompt(interaction: discord.Interaction, prompt: str):
 
     ai.erase_prompt()
     ai.record_prompt(prompt)
+    # noinspection PyUnresolvedReferences
     await interaction.response.send_message(f"[완전히 새로운 프롬프트가 기록되었습니다]\n{prompt}")
 
 
@@ -141,6 +147,7 @@ async def _reset_prompt(interaction: discord.Interaction):
     print("[Command] Clearing conversation...")
 
     ai.reset_prompt()
+    # noinspection PyUnresolvedReferences
     await interaction.response.send_message("[대화 내용이 비워졌습니다]")
 
 
@@ -150,6 +157,7 @@ async def _reset_config(interaction: discord.Interaction):
 
     reset_config()
     ai.reset_prompt()
+    # noinspection PyUnresolvedReferences
     await interaction.response.send_message("[모든 설정이 초기화되었습니다]")
 
 
@@ -212,6 +220,7 @@ async def _config(interaction: discord.Interaction,
         content += f"- 추가 설정: {extra}\n"
 
     message = f"[설정이 변경되었습니다]\n{content}"
+    # noinspection PyUnresolvedReferences
     await interaction.response.send_message(message)
 
 # TODO: 인격 슬롯 3개 변경 가능하게 추가
