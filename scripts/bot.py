@@ -3,22 +3,33 @@ from discord import app_commands
 
 from scripts import conversation as conv
 from settings.config import AppConfig
+from settings.config_cache import ConfigCache
 
+SESSION_ID = 0
 config = AppConfig()
-config.cache.load()
-config.cache.save()
 
-ai = conv.OpenAIConversation(config)
+
+def get_or_create_cache() -> ConfigCache:
+    return config.get_or_create_cache(SESSION_ID)
+
+
+cache = get_or_create_cache()
+cache.load()
+cache.save()
+
+ai = conv.OpenAIConversation(config, cache)
 
 
 def reset_config():
     global config
+    global cache
     global ai
 
     config = AppConfig()
-    config.cache.save()
+    cache = get_or_create_cache()
+    cache.save()
 
-    ai = conv.OpenAIConversation(config)
+    ai = conv.OpenAIConversation(config, cache)
 
 
 # Set intents to receive message content
@@ -61,8 +72,8 @@ async def stop():
 
 
 def format_message(message: str, answer: str) -> str:
-    user_name = config.cache.user_name
-    ai_name = config.cache.ai_name
+    user_name = cache.user_name
+    ai_name = cache.ai_name
     return f"**{user_name}**: {message}\n**{ai_name}**: {answer}"
 
 
@@ -104,8 +115,8 @@ async def _replace_prompt_text(interaction: discord.Interaction, before: str, af
 async def _replace_names(interaction: discord.Interaction, user_name: str, ai_name: str):
     print("[Command] Renaming...")
 
-    previous_user = config.cache.user_name
-    previous_ai = config.cache.ai_name
+    previous_user = cache.user_name
+    previous_ai = cache.ai_name
     ai.replace_names(user_name, ai_name)
 
     message = f"""[이름이 변경되었습니다]
@@ -119,8 +130,8 @@ async def _replace_names(interaction: discord.Interaction, user_name: str, ai_na
 async def _swap_names(interaction: discord.Interaction):
     print("[Command] Swapping...")
 
-    previous_user = config.cache.user_name
-    previous_ai = config.cache.ai_name
+    previous_user = cache.user_name
+    previous_ai = cache.ai_name
     ai.replace_names("TEMP", previous_user)
     ai.replace_names(previous_ai, previous_user)
 

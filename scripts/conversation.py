@@ -2,18 +2,18 @@ import openai
 from discord import app_commands
 
 from settings.config import AppConfig
-from utils import file_io
+from settings.config_cache import ConfigCache
 
 
 class OpenAIConversation:
-    def __init__(self, _config: AppConfig):
-        self._config = _config
-        self._cache = _config.cache
+    def __init__(self, config: AppConfig, cache: ConfigCache):
+        self._config = config
+        self._cache = cache
 
         openai.organization = self._config.organization_id
         openai.api_key = self._config.api_key
 
-        self._full_prompt = self._config.prompt_history
+        self._full_prompt = self._cache.load_prompt()
 
     async def _predict(self) -> str:
         response = await openai.Completion.acreate(
@@ -33,7 +33,7 @@ class OpenAIConversation:
         return self._cache.creativity / 4
 
     def _save_history(self):
-        file_io.save_txt(self._config.prompt_history_path, self._full_prompt)
+        self._cache.save_prompt(self._full_prompt)
 
     async def predict_answer(self, message: str) -> str:
         self.record_prompt(f"{self._cache.user_name}: {message}\n{self._cache.ai_name}:")
