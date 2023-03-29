@@ -1,3 +1,4 @@
+import re
 import openai
 from discord import app_commands
 
@@ -10,72 +11,100 @@ class OpenAIConversation:
         self._config = config
         self._cache = cache
 
-        openai.organization = self._config.organization_id
-        openai.api_key = self._config.api_key
+        openai.organization = config.organization_id
+        openai.api_key = config.api_key
 
-        self._full_prompt = self._cache.load_prompt()
+        self.prompt = self._cache.load_prompt_format()
+        self.history = self._cache.load_history()
 
     async def _predict(self) -> str:
-        response = await openai.Completion.acreate(
-            engine=self._config.engine_name,
-            prompt=self._full_prompt,
-            temperature=self._get_temperature(),
-            max_tokens=self._config.max_tokens,  # TODO: dynamic_max_tokens 적용
-            top_p=self._config.top_p,
-            frequency_penalty=self._config.frequency_penalty,
-            presence_penalty=self._config.presence_penalty,
-            stop=[f'{self._cache.user_name}:', f'{self._cache.ai_name}:'],
-        )
+        try:
+            response = await openai.Completion.acreate(
+                engine=self._config.engine_name,
+                prompt=f"{self.prompt}\n{self.history}",
+                temperature=self._get_temperature(),
+                max_tokens=self._config.max_tokens,
+                top_p=self._config.top_p,
+                frequency_penalty=self._config.frequency_penalty,
+                presence_penalty=self._config.presence_penalty,
+                stop=[f'{self._cache.user_name}:', f'{self._cache.ai_name}:'],
+            )
+        except openai.error.InvalidRequestError as e:
+            if e.user_message.startswith("This model's maximum context length is"):
+                self._scroll_history()
+                return await self._predict()
+
+            raise e
 
         return response.choices[0].text.strip()
 
+    def _scroll_history(self):
+        print('[Conversation] Scrolling history...')
+        lines = self.history.splitlines()[self._config.scroll_amount:]
+        self.history = '\n'.join(lines)
+
+    @staticmethod
+    def _parse_tokens_from_error(text: str):
+        """This model's maximum context length is 4097 tokens, however you requested 10000 tokens (8976 in your prompt
+        ; 1024 for the completion). Please reduce your prompt
+        ; or completion length."""
+
+        # extract max_tokens, current_tokens, prompt_tokens, and completion_tokens using regex
+        max_tokens = int(re.search(r'maximum context length is (\d+)', text).group(1))
+        current_tokens = int(re.search(r'requested (\d+) tokens', text).group(1))
+        prompt_tokens = int(re.search(r'\((\d+) in your prompt', text).group(1))
+        completion_tokens = int(re.search(r'; (\d+) for the completion', text).group(1))
+
+        return max_tokens, current_tokens, prompt_tokens, completion_tokens
+
     def _get_temperature(self) -> float:
-        return self._cache.creativity / 4
+        return creativity_map[self._cache.creativity]
+
+    def _save_prompt(self):
+        self._cache.save_prompt(self.prompt)
 
     def _save_history(self):
-        self._cache.save_prompt(self._full_prompt)
-
-    async def predict_answer(self, message: str) -> str:
-        self.record_prompt(f"{self._cache.user_name}: {message}\n{self._cache.ai_name}:")
-
-        try:
-            answer = await self._predict()
-            self.record_prompt(f" {answer}\n")
-            return answer
-        except openai.error.InvalidRequestError as e:
-            print(e)
-            self.reset_prompt()
-            return "미안해요. 나의 기억 한계에 도달했네요... 우리의 추억은 여기까지인가봐요..."
-        except Exception as e:
-            print(e)
-            return "미안해요. 뭔가 잘못됐어요..."
+        self._cache.save_history(self.history)
 
     def record_prompt(self, prompt: str):
-        self._full_prompt += prompt  # TODO: rolling_prompt_record 적용
+        self.prompt += prompt
+        self._save_prompt()
+
+    def record_history(self, history: str):
+        # TODO: token 기반 rolling history 적용
+        self.history += history
         self._save_history()
 
-    def replace_prompt_text(self, old_text: str, new_text: str):
-        self._full_prompt = self._full_prompt.replace(old_text, new_text)
-        self._save_history()
-
-    def replace_names(self, user_name: str, ai_name: str):
-        self.replace_prompt_text(self._cache.user_name, user_name)
-        self.replace_prompt_text(self._cache.ai_name, ai_name)
-        self._cache.user_name = user_name
-        self._cache.ai_name = ai_name
-        self._cache.save()
-
-    def reset_prompt(self):
-        self._full_prompt = self._cache.get_initial_prompt()
+    def erase_history(self):
+        self.history = ""
         self._save_history()
 
     def erase_prompt(self):
-        self._full_prompt = ""
+        self.prompt = ""
+        self._save_prompt()
+
+    async def predict_answer(self, message: str) -> str:
+        self.record_history(f"{self._cache.user_name}: {message}\n{self._cache.ai_name}:")
+
+        answer = await self._predict()
+        self.record_history(f" {answer}\n")
+        return answer
+
+    def replace_history_text(self, old_text: str, new_text: str):
+        self.history = self.history.replace(old_text, new_text)
         self._save_history()
+
+    def replace_names(self, user_name: str, ai_name: str):
+        self.replace_history_text(self._cache.user_name, user_name)
+        self.replace_history_text(self._cache.ai_name, ai_name)
+        self._cache.user_name = user_name
+        self._cache.ai_name = ai_name
+        self._cache.save_settings()
+        self.prompt = self._cache.load_prompt_format()
 
     def change_creativity(self, creativity: int):
         self._cache.creativity = creativity
-        self._cache.save()
+        self._cache.save_settings()
 
     # TODO: 기능 구현
     def change_intelligence(self, intelligence: int):
@@ -103,12 +132,20 @@ class OpenAIConversation:
         pass
 
 
+creativity_map = {
+    0: 0.1,
+    1: 0.3,
+    2: 0.5,
+    3: 0.7,
+    4: 0.9,
+}
+
 creativities = [
     app_commands.Choice(name="고지식함", value=0),
-    app_commands.Choice(name="단순함", value=1),
-    app_commands.Choice(name="폄범함", value=2),
+    app_commands.Choice(name="명확함", value=1),
+    app_commands.Choice(name="평범함", value=2),
     app_commands.Choice(name="창의적임", value=3),
-    app_commands.Choice(name="나사풀린", value=4),
+    app_commands.Choice(name="헛소리꾼", value=4),
 ]
 
 intelligences = [

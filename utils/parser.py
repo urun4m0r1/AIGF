@@ -8,7 +8,7 @@ def parse_session_list(value: str) -> list:
     if value == '':
         return []
 
-    return [int(item) for item in value.split(',')]
+    return [int(item) for item in value.splitlines()]
 
 
 def parse_guilds(items: list) -> list:

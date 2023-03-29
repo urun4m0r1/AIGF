@@ -3,20 +3,12 @@ from discord import app_commands
 
 from scripts import conversation as conv
 from settings.config import AppConfig
-from settings.config_cache import ConfigCache
 
+SETTINGS_PATH = './settings.ini'
 SESSION_ID = 0
-config = AppConfig()
 
-
-def get_or_create_cache() -> ConfigCache:
-    return config.get_or_create_cache(SESSION_ID)
-
-
-cache = get_or_create_cache()
-cache.load()
-cache.save()
-
+config = AppConfig(SETTINGS_PATH)
+cache = config.get_or_create_cache(SESSION_ID)
 ai = conv.OpenAIConversation(config, cache)
 
 
@@ -25,10 +17,10 @@ def reset_config():
     global cache
     global ai
 
-    config = AppConfig()
-    cache = get_or_create_cache()
-    cache.save()
+    config.remove_cache(SESSION_ID)
 
+    config = AppConfig(SETTINGS_PATH)
+    cache = config.get_or_create_cache(SESSION_ID)
     ai = conv.OpenAIConversation(config, cache)
 
 
@@ -95,7 +87,7 @@ async def _send_message(interaction: discord.Interaction, message: str):
 async def _record_prompt(interaction: discord.Interaction, prompt: str):
     print("[Command] Recording message...")
 
-    ai.record_prompt(f"\n{prompt}\n\n")
+    ai.record_history(f"\n{prompt}\n\n")
     # noinspection PyUnresolvedReferences
     await interaction.response.send_message(f"[프롬프트가 기록되었습니다]\n{prompt}")
 
@@ -105,7 +97,7 @@ async def _record_prompt(interaction: discord.Interaction, prompt: str):
 async def _replace_prompt_text(interaction: discord.Interaction, before: str, after: str):
     print("[Command] Replacing words...")
 
-    ai.replace_prompt_text(before, after)
+    ai.replace_history_text(before, after)
     # noinspection PyUnresolvedReferences
     await interaction.response.send_message(f"[단어를 치환했습니다]\n{before} -> {after}")
 
@@ -157,7 +149,7 @@ async def _erase_prompt(interaction: discord.Interaction, prompt: str):
 async def _reset_prompt(interaction: discord.Interaction):
     print("[Command] Clearing conversation...")
 
-    ai.reset_prompt()
+    ai.erase_history()
     # noinspection PyUnresolvedReferences
     await interaction.response.send_message("[대화 내용이 비워졌습니다]")
 
@@ -167,7 +159,7 @@ async def _reset_config(interaction: discord.Interaction):
     print("[Command] Resetting config...")
 
     reset_config()
-    ai.reset_prompt()
+    ai.erase_history()
     # noinspection PyUnresolvedReferences
     await interaction.response.send_message("[모든 설정이 초기화되었습니다]")
 

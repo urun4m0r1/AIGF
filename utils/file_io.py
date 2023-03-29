@@ -1,4 +1,12 @@
 import json
+import os
+
+
+def remove_file(path: str):
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
 
 
 def load_json(path: str) -> dict:
