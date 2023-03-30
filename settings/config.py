@@ -7,7 +7,7 @@ from utils.parser import parse_guilds, parse_session_list
 
 class AppConfig:
 
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self._config = ConfigParser()
         self._config.read(path)
 
@@ -46,7 +46,7 @@ class AppConfig:
         self.bot_token = self._discord.get('BotToken', '')
 
         # Setup
-        self.server_guilds = parse_guilds([item[1] for item in self._servers.items()])
+        self.server_guilds = list(parse_guilds(self._servers.values()))
         self.default_prompt = load_txt(self._default_prompt_path)
 
         # Cache
@@ -80,8 +80,8 @@ class AppConfig:
         return self._cache_path + file_name
 
     def _update_session_list(self):
-        session_list = list(self._session_caches.keys())
-        session_list_text = '\n'.join([str(item) for item in session_list])
+        session_list = self._session_caches.keys()
+        session_list_text = '\n'.join(str(item) for item in session_list)
         save_txt(self._session_list_path, session_list_text)
 
     def create_cache(self, session_id: int):

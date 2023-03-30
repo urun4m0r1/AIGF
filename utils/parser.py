@@ -1,18 +1,24 @@
-from typing import Optional, List, Type, Union
+from typing import Optional, Type, Union, Iterable
 
-import discord
+from discord import Object as DiscordObject
 
 Number = Type[Union[int, float]]
 
 
-def parse_session_list(value: str) -> List[int]:
+def parse_session_list(value: str) -> Iterable[int]:
     """Parse a string containing session list and return a list of integers."""
-    return [int(item) for item in value.strip().splitlines() if item]
+    for item in value.strip().splitlines():
+        session_id = try_parse_int(item)
+        if session_id is not None:
+            yield session_id
 
 
-def parse_guilds(items: List[str]) -> List[discord.Object]:
-    """Convert a list of strings to a list of discord.Object instances."""
-    return [discord.Object(id=int(item)) for item in items]
+def parse_guilds(items: Iterable[str]) -> Iterable[DiscordObject]:
+    """Convert a list of text to a list of discord.Object instances."""
+    for item in items:
+        object_id = try_parse_int(item)
+        if object_id is not None:
+            yield DiscordObject(id=object_id)
 
 
 def try_parse_number(text: Optional[str], number_type: Number) -> Optional[Number]:
