@@ -1,7 +1,7 @@
 import configparser
 from pathlib import Path
 
-from utils.file_io import save_txt, load_txt, save_json, load_json, remove_file
+from utils.file_io import save_txt, load_txt_strip, save_json, load_json, remove_file
 
 KEY_USER_NAME = 'UserName'
 KEY_AI_NAME = 'AIName'
@@ -53,13 +53,13 @@ class SessionCache:
         self.creativity = int(cache.get(KEY_CREATIVITY, self.creativity))
 
     def load_prompt_format(self) -> str:
-        return load_txt(self._prompt_path).strip().format(self.user_name, self.ai_name)
+        return load_txt_strip(self._prompt_path).format(self.user_name, self.ai_name)
 
     def load_prompt(self) -> str:
-        return load_txt(self._prompt_path).strip()
+        return load_txt_strip(self._prompt_path)
 
     def load_history(self) -> str:
-        return load_txt(self._history_path).strip()
+        return load_txt_strip(self._history_path)
 
     def save_settings(self):
         cache = {

@@ -22,6 +22,10 @@ def save_json(path: PathLike, data: Dict) -> None:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 
+def load_txt_strip(path: PathLike) -> str:
+    return load_txt(path).strip()
+
+
 def load_txt(path: PathLike) -> str:
     return Path(path).read_text(encoding='utf-8', errors='ignore')
 
