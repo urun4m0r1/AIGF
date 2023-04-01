@@ -1,4 +1,5 @@
 import configparser
+from pathlib import Path
 
 from utils.file_io import save_txt, load_txt, save_json, load_json, remove_file
 
@@ -7,11 +8,11 @@ KEY_AI_NAME = 'AIName'
 KEY_CREATIVITY = 'Creativity'
 
 
-class ConfigCache:
+class SessionCache:
     def __init__(self,
-                 settings_path: str,
-                 prompt_path: str,
-                 history_path: str,
+                 settings_path: Path,
+                 prompt_path: Path,
+                 history_path: Path,
                  default_prompt: str,
                  section: configparser.SectionProxy):
         self._settings_path = settings_path

@@ -5,7 +5,7 @@ from discord import Object as DiscordObject
 Number = Type[Union[int, float]]
 
 
-def parse_session_list(value: str) -> Iterable[int]:
+def parse_sessions_list(value: str) -> Iterable[int]:
     """Parse a string containing session list and return a list of integers."""
     for item in value.strip().splitlines():
         session_id = try_parse_int(item)

@@ -3,11 +3,11 @@ import openai
 from discord import app_commands
 
 from settings.config import AppConfig
-from settings.config_cache import ConfigCache
+from settings.session_cache import SessionCache
 
 
 class OpenAIConversation:
-    def __init__(self, config: AppConfig, cache: ConfigCache):
+    def __init__(self, config: AppConfig, cache: SessionCache):
         self._config = config
         self._cache = cache
 

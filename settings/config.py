@@ -1,17 +1,22 @@
 from configparser import ConfigParser
+from pathlib import Path
+from typing import Iterable
 
-from settings.config_cache import ConfigCache
+from settings.session_cache import SessionCache
 from utils.file_io import save_txt, load_txt
-from utils.parser import parse_guilds, parse_session_list
+from utils.parser import parse_guilds, parse_sessions_list
 
 
 class AppConfig:
-
     def __init__(self, path: str) -> None:
         self._config = ConfigParser()
         self._config.read(path)
 
-        # Categories
+        self._init_categories()
+        self._init_values()
+        self._init()
+
+    def _init_categories(self):
         self._environment = self._config['Environment']
         self._cache = self._config['Environment.Cache']
         self._ai = self._config['OpenAI']
@@ -20,12 +25,13 @@ class AppConfig:
         self._servers = self._config['Discord.Servers']
         self._default = self._config['Default']
 
+    def _init_values(self):
         # [Environment]
-        self._default_prompt_path = self._environment.get('DefaultPromptPath', '')
-        self._cache_path = self._environment.get('CachePath', '')
+        self._default_prompt_path = Path(self._environment.get('DefaultPromptPath', ''))
+        self._cache_path = Path(self._environment.get('CachePath', ''))
 
         # [Environment.Cache]
-        self._session_list_name = self._cache.get('SessionListName', '')
+        self._sessions_list_name = self._cache.get('SessionsListName', '')
         self._settings_name = self._cache.get('SettingsName', '')
         self._prompt_name = self._cache.get('PromptName', '')
         self._history_name = self._cache.get('HistoryName', '')
@@ -45,74 +51,82 @@ class AppConfig:
         # [Discord]
         self.bot_token = self._discord.get('BotToken', '')
 
+    def _init(self):
         # Setup
         self.server_guilds = list(parse_guilds(self._servers.values()))
         self.default_prompt = load_txt(self._default_prompt_path)
 
         # Cache
-        self._session_list_path = self._get_path(self._session_list_name)
-        session_list_text = load_txt(self._session_list_path)
-        session_list = parse_session_list(session_list_text)
-        self._session_caches = {}
+        self._sessions_list_path = self._cache_path / self._sessions_list_name
+        sessions = self._load_sessions_list()
 
-        for session_id in session_list:
-            settings_cache = self._create_config_cache(session_id)
-            settings_cache.load_settings()
+        self._session_caches = {session_id: self._create_session_cache(session_id) for session_id in sessions}
 
-    def _create_config_cache(self, session_id: int) -> ConfigCache:
-        settings_path = self._get_session_path(self._settings_name, session_id)
-        prompt_path = self._get_session_path(self._prompt_name, session_id)
-        history_path = self._get_session_path(self._history_name, session_id)
+        for session_cache in self._session_caches.values():
+            session_cache.load_settings()
 
-        settings_cache = ConfigCache(settings_path,
-                                     prompt_path,
-                                     history_path,
-                                     self.default_prompt,
-                                     self._default)
+    def _create_session_cache(self, session_id: int) -> SessionCache:
+        settings_path = self._cache_path / self._settings_name.format(session_id)
+        prompt_path = self._cache_path / self._prompt_name.format(session_id)
+        history_path = self._cache_path / self._history_name.format(session_id)
 
-        self._session_caches[session_id] = settings_cache
-        return settings_cache
+        session_cache = SessionCache(
+            settings_path,
+            prompt_path,
+            history_path,
+            self.default_prompt,
+            self._default)
 
-    def _get_session_path(self, file_name: str, session_id: int) -> str:
-        return self._get_path(file_name).format(session_id)
+        return session_cache
 
-    def _get_path(self, file_name: str) -> str:
-        return self._cache_path + file_name
+    def _load_sessions_list(self) -> Iterable[int]:
+        sessions_list = load_txt(self._sessions_list_path)
+        return parse_sessions_list(sessions_list)
 
-    def _update_session_list(self):
-        session_list = self._session_caches.keys()
-        session_list_text = '\n'.join(str(item) for item in session_list)
-        save_txt(self._session_list_path, session_list_text)
+    def _save_sessions_list(self) -> None:
+        sessions_list = '\n'.join(str(item) for item in self._session_caches.keys())
+        save_txt(self._sessions_list_path, sessions_list)
 
-    def create_cache(self, session_id: int):
-        if session_id in self._session_caches:
-            return
+    def is_cache_exists(self, session_id: int) -> bool:
+        return session_id in self._session_caches
 
-        settings_cache = self._create_config_cache(session_id)
-        settings_cache.reset_and_save()
+    def create_cache(self, session_id: int) -> SessionCache:
+        if self.is_cache_exists(session_id):
+            raise ValueError(f'Session cache with id {session_id} already exists')
 
-        self._update_session_list()
+        session_cache = self._create_session_cache(session_id)
+        session_cache.reset_and_save()
 
-    def get_cache(self, session_id: int) -> ConfigCache:
+        self._session_caches[session_id] = session_cache
+        self._save_sessions_list()
+
+        return session_cache
+
+    def get_cache(self, session_id: int) -> SessionCache:
+        if not self.is_cache_exists(session_id):
+            raise ValueError(f'Session cache with id {session_id} does not exist')
+
         return self._session_caches[session_id]
 
-    def get_or_create_cache(self, session_id: int) -> ConfigCache:
-        if session_id not in self._session_caches:
+    def get_or_create_cache(self, session_id: int) -> SessionCache:
+        if self.is_cache_exists(session_id):
+            return self.get_cache(session_id)
+        else:
             self.create_cache(session_id)
 
-        return self.get_cache(session_id)
+    def remove_cache(self, session_id: int) -> None:
+        if not self.is_cache_exists(session_id):
+            return
 
-    def remove_cache(self, session_id: int):
-        settings_cache = self.get_cache(session_id)
-        settings_cache.remove_all()
+        session_cache = self.get_cache(session_id)
+        session_cache.remove_all()
 
         del self._session_caches[session_id]
-        self._update_session_list()
+        self._save_sessions_list()
 
-    def remove_all_caches(self):
-        for session_id in self._session_caches.keys():
-            settings_cache = self.get_cache(session_id)
-            settings_cache.remove_all()
+    def remove_all_caches(self) -> None:
+        for session_cache in self._session_caches.values():
+            session_cache.remove_all()
 
         self._session_caches.clear()
-        self._update_session_list()
+        self._save_sessions_list()
