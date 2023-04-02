@@ -1,5 +1,6 @@
 import asyncio
 from asyncio import Task
+from pathlib import Path
 from typing import Any
 
 import discord
@@ -14,7 +15,7 @@ from settings.config import AppConfig
 # TODO: AI랑 순서 바꾸는 기능 추가
 
 class DiscordBot(discord.Client):
-    def __init__(self, settings_path: str, session_id: int):
+    def __init__(self, settings_path: Path, session_id: int):
         self.settings_path = settings_path
         self.session_id = session_id
 

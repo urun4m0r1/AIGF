@@ -8,7 +8,7 @@ from utils.parser import parse_guilds, parse_sessions_list
 
 
 class AppConfig:
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: Path) -> None:
         self._config = ConfigParser()
         self._config.read(path)
 
