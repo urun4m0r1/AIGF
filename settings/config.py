@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Iterable
 
 from settings.session_cache import SessionCache
-from utils.file_io import save_txt, load_txt
+from utils.file_io import save_txt, load_txt, remove_file
 from utils.parser import parse_guilds, parse_sessions_list
 
 
@@ -33,7 +33,6 @@ class AppConfig:
         # [Environment.Cache]
         self._sessions_list_name = self._cache.get('SessionsListName', '')
         self._settings_name = self._cache.get('SettingsName', '')
-        self._prompt_name = self._cache.get('PromptName', '')
         self._history_name = self._cache.get('HistoryName', '')
 
         # [OpenAI]
@@ -67,14 +66,11 @@ class AppConfig:
 
     def _create_session_cache(self, session_id: int) -> SessionCache:
         settings_path = self._cache_path / self._settings_name.format(session_id)
-        prompt_path = self._cache_path / self._prompt_name.format(session_id)
         history_path = self._cache_path / self._history_name.format(session_id)
 
         session_cache = SessionCache(
             settings_path,
-            prompt_path,
             history_path,
-            self.default_prompt,
             self._default)
 
         return session_cache
@@ -86,6 +82,9 @@ class AppConfig:
     def _save_sessions_list(self) -> None:
         sessions_list = '\n'.join(str(item) for item in self._session_caches.keys())
         save_txt(self._sessions_list_path, sessions_list)
+
+    def _remove_sessions_list(self) -> None:
+        remove_file(self._sessions_list_path)
 
     def is_cache_exists(self, session_id: int) -> bool:
         return session_id in self._session_caches
@@ -129,4 +128,4 @@ class AppConfig:
             session_cache.remove_all()
 
         self._session_caches.clear()
-        self._save_sessions_list()
+        self._remove_sessions_list()

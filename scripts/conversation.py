@@ -14,8 +14,13 @@ class OpenAIConversation:
         openai.organization = config.organization_id
         openai.api_key = config.api_key
 
-        self.prompt = self._cache.load_prompt_format()
+        self.prompt = None
         self.history = self._cache.load_history()
+
+        self.initialize_prompt()
+
+    def initialize_prompt(self):
+        self.prompt = self._config.default_prompt.format(self._cache.user_name, self._cache.ai_name)
 
     async def _predict(self) -> str:
         try:
@@ -60,15 +65,8 @@ class OpenAIConversation:
     def _get_temperature(self) -> float:
         return creativity_map[self._cache.creativity]
 
-    def _save_prompt(self):
-        self._cache.save_prompt(self.prompt)
-
     def _save_history(self):
         self._cache.save_history(self.history)
-
-    def record_prompt(self, prompt: str):
-        self.prompt += prompt
-        self._save_prompt()
 
     def record_history(self, history: str):
         # TODO: token 기반 rolling history 적용
@@ -78,10 +76,6 @@ class OpenAIConversation:
     def erase_history(self):
         self.history = ""
         self._save_history()
-
-    def erase_prompt(self):
-        self.prompt = ""
-        self._save_prompt()
 
     async def predict_answer(self, message: str) -> str:
         self.record_history(f"{self._cache.user_name}: {message}\n{self._cache.ai_name}:")
@@ -100,7 +94,7 @@ class OpenAIConversation:
         self._cache.user_name = user_name
         self._cache.ai_name = ai_name
         self._cache.save_settings()
-        self.prompt = self._cache.load_prompt_format()
+        self.initialize_prompt()
 
     def change_creativity(self, creativity: int):
         self._cache.creativity = creativity
