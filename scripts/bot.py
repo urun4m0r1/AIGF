@@ -16,7 +16,7 @@ from settings.config import AppConfig
 # TODO: AI랑 순서 바꾸는 기능 추가
 
 class DiscordBot(discord.Client):
-    def __init__(self, settings_path: Path, session_id: int):
+    def __init__(self, settings_path: Path, session_id: int) -> None:
         self.settings_path = settings_path
         self.session_id = session_id
 
@@ -59,16 +59,16 @@ class DiscordBot(discord.Client):
         ai_name = self.cache.ai_name
         return f"**{user_name}**: {message}\n**{ai_name}**: {answer}"
 
-    def reset_config(self):
+    def reset_config(self) -> None:
         self.config.remove_cache(self.session_id)
 
         self.config = AppConfig(self.settings_path)
         self.cache = self.config.get_or_create_cache(self.session_id)
         self.ai = conv.OpenAIConversation(self.config, self.cache)
 
-    def add_events(self):
+    def add_events(self) -> None:
         @self.event
-        async def on_ready():
+        async def on_ready() -> None:
             logging.info("[Event] Changing presence to online...")
             await self.change_presence(status=discord.Status.online, activity=None)
 
@@ -84,14 +84,23 @@ class DiscordBot(discord.Client):
 
         @self.event
         async def on_error(event_method: str, /, *args: Any, **kwargs: Any) -> None:
-            logging.info(f"[Event] Error occurred in '{event_method}' event.")
-            logging.info(f"[Event] Args: {args}")
-            logging.info(f"[Event] Kwargs: {kwargs}")
+            logging.exception(f"[Event] Error occurred in '{event_method}' event.")
+            logging.error(f"[Event] Args: {args}")
+            logging.error(f"[Event] Kwargs: {kwargs}")
 
-    def add_commands(self):
-        @self.tree.command(name="대화", description="인공지능과 대화", guilds=self.config.server_guilds)
-        @app_commands.describe(message="메시지")
-        async def _send_message(interaction: discord.Interaction, message: str):
+    def add_commands(self) -> None:
+        @self.tree.command(
+            name="대화",
+            description="인공지능과 대화",
+            guilds=self.config.server_guilds
+        )
+        @app_commands.describe(
+            message="메시지"
+        )
+        async def _send_message(
+                interaction: discord.Interaction,
+                message: str
+        ) -> None:
             logging.info("[Command] Receiving message...")
 
             # noinspection PyUnresolvedReferences
@@ -101,27 +110,58 @@ class DiscordBot(discord.Client):
 
             logging.info("[Command] Message sent.")
 
-        @self.tree.command(name="기록", description="대화 마지막에 이어서 문장을 삽입", guilds=self.config.server_guilds)
-        @app_commands.describe(prompt="프롬프트")
-        async def _record_prompt(interaction: discord.Interaction, prompt: str):
+        @self.tree.command(
+            name="기록",
+            description="대화 마지막에 이어서 문장을 삽입",
+            guilds=self.config.server_guilds
+        )
+        @app_commands.describe(
+            prompt="프롬프트"
+        )
+        async def _record_prompt(
+                interaction: discord.Interaction,
+                prompt: str
+        ) -> None:
             logging.info("[Command] Recording message...")
 
             self.ai.record_history(f"\n{prompt}\n\n")
             # noinspection PyUnresolvedReferences
             await interaction.response.send_message(f"[프롬프트가 기록되었습니다]\n{prompt}")
 
-        @self.tree.command(name="바꾸기", description="모든 대화에서 특정 단어를 치환", guilds=self.config.server_guilds)
-        @app_commands.describe(before="기존 단어", after="새 단어")
-        async def _replace_prompt_text(interaction: discord.Interaction, before: str, after: str):
+        @self.tree.command(
+            name="바꾸기",
+            description="모든 대화에서 특정 단어를 치환",
+            guilds=self.config.server_guilds
+        )
+        @app_commands.describe(
+            before="기존 단어",
+            after="새 단어"
+        )
+        async def _replace_prompt_text(
+                interaction: discord.Interaction,
+                before: str,
+                after: str
+        ) -> None:
             logging.info("[Command] Replacing words...")
 
             self.ai.replace_history_text(before, after)
             # noinspection PyUnresolvedReferences
             await interaction.response.send_message(f"[단어를 치환했습니다]\n{before} -> {after}")
 
-        @self.tree.command(name="이름", description="이름 변경", guilds=self.config.server_guilds)
-        @app_commands.describe(user_name="당신 이름", ai_name="상대 이름")
-        async def _replace_names(interaction: discord.Interaction, user_name: str, ai_name: str):
+        @self.tree.command(
+            name="이름",
+            description="이름 변경",
+            guilds=self.config.server_guilds
+        )
+        @app_commands.describe(
+            user_name="당신 이름",
+            ai_name="상대 이름"
+        )
+        async def _replace_names(
+                interaction: discord.Interaction,
+                user_name: str,
+                ai_name: str
+        ) -> None:
             logging.info("[Command] Renaming...")
 
             previous_user = self.cache.user_name
@@ -134,8 +174,12 @@ class DiscordBot(discord.Client):
             # noinspection PyUnresolvedReferences
             await interaction.response.send_message(message)
 
-        @self.tree.command(name="스왑", description="이름 스왑", guilds=self.config.server_guilds)
-        async def _swap_names(interaction: discord.Interaction):
+        @self.tree.command(
+            name="스왑",
+            description="이름 스왑",
+            guilds=self.config.server_guilds
+        )
+        async def _swap_names(interaction: discord.Interaction) -> None:
             logging.info("[Command] Swapping...")
 
             previous_user = self.cache.user_name
@@ -149,16 +193,24 @@ class DiscordBot(discord.Client):
             # noinspection PyUnresolvedReferences
             await interaction.response.send_message(message)
 
-        @self.tree.command(name="정리", description="대화 내용 비우기", guilds=self.config.server_guilds)
-        async def _reset_prompt(interaction: discord.Interaction):
+        @self.tree.command(
+            name="정리",
+            description="대화 내용 비우기",
+            guilds=self.config.server_guilds
+        )
+        async def _reset_prompt(interaction: discord.Interaction) -> None:
             logging.info("[Command] Clearing conversation...")
 
             self.ai.erase_history()
             # noinspection PyUnresolvedReferences
             await interaction.response.send_message("[대화 내용이 비워졌습니다]")
 
-        @self.tree.command(name="초기화", description="설정 초기화", guilds=self.config.server_guilds)
-        async def _reset_config(interaction: discord.Interaction):
+        @self.tree.command(
+            name="초기화",
+            description="설정 초기화",
+            guilds=self.config.server_guilds
+        )
+        async def _reset_config(interaction: discord.Interaction) -> None:
             logging.info("[Command] Resetting self.config...")
 
             self.reset_config()
@@ -166,33 +218,43 @@ class DiscordBot(discord.Client):
             # noinspection PyUnresolvedReferences
             await interaction.response.send_message("[모든 설정이 초기화되었습니다]")
 
-        @self.tree.command(name="설정", description="설정 변경 (아직 창의력 빼고 작동 안함)", guilds=self.config.server_guilds)
-        @app_commands.describe(creativity="창의력",
-                               intelligence="지능",
-                               personality="성격",
-                               mood="기분",
-                               reputation="평판",
-                               age="나이",
-                               relationship="관계",
-                               title="호칭",
-                               extra="추가 설정")
-        @app_commands.choices(creativity=conv.creativities,
-                              intelligence=conv.intelligences,
-                              personality=conv.persornalities,
-                              mood=conv.moods,
-                              reputation=conv.reputations,
-                              age=conv.ages,
-                              relationship=conv.relationships)
-        async def _config(interaction: discord.Interaction,
-                          creativity: int = None,
-                          intelligence: int = None,
-                          personality: int = None,
-                          mood: int = None,
-                          reputation: int = None,
-                          age: int = None,
-                          relationship: int = None,
-                          title: str = None,
-                          extra: str = None):
+        @self.tree.command(
+            name="설정",
+            description="설정 변경 (아직 창의력 빼고 작동 안함)",
+            guilds=self.config.server_guilds
+        )
+        @app_commands.describe(
+            creativity="창의력",
+            intelligence="지능",
+            personality="성격",
+            mood="기분",
+            reputation="평판",
+            age="나이",
+            relationship="관계",
+            title="호칭",
+            extra="추가 설정"
+        )
+        @app_commands.choices(
+            creativity=conv.creativities,
+            intelligence=conv.intelligences,
+            personality=conv.persornalities,
+            mood=conv.moods,
+            reputation=conv.reputations,
+            age=conv.ages,
+            relationship=conv.relationships
+        )
+        async def _config(
+                interaction: discord.Interaction,
+                creativity: int = None,
+                intelligence: int = None,
+                personality: int = None,
+                mood: int = None,
+                reputation: int = None,
+                age: int = None,
+                relationship: int = None,
+                title: str = None,
+                extra: str = None
+        ) -> None:
             logging.info("[Command] Changing self.config...")
 
             content = ""
