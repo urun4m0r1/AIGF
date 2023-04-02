@@ -1,13 +1,19 @@
 import asyncio
-from pathlib import Path
 import logging
+from pathlib import Path
 
 from colorama import Fore, Style
 
 from scripts.bot import DiscordBot
 
+logging.basicConfig(level=logging.INFO)
+
 SETTINGS_PATH = Path('./settings.ini')
 SESSION_ID = 0
+
+
+def warning(message: str) -> None:
+    logging.warning(f"{Fore.YELLOW}{Style.BRIGHT}{message}{Style.RESET_ALL}")
 
 
 async def main() -> None:
@@ -24,10 +30,8 @@ if __name__ == '__main__':
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logging.info(
-            f"{Fore.RED}{Style.BRIGHT}"
+        warning(
             "[System] Keyboard Interrupted.\n"
             "[System] Do not stop the bot with keyboard interrupt.\n"
-            "[System] Please press enter to stop the bot properly.\n"
-            f"{Style.RESET_ALL}"
+            "[System] Please press enter to stop the bot properly."
         )

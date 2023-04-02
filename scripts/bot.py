@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import discord
+from colorama import Fore, Style
 from discord import app_commands
 
 from scripts import conversation as conv
@@ -14,6 +15,10 @@ from settings.config import AppConfig
 # TODO: 인격 슬롯 3개 변경 가능하게 추가
 # TODO: 리롤 버튼 추가
 # TODO: AI랑 순서 바꾸는 기능 추가
+
+def info(message: str) -> None:
+    logging.info(f"{Fore.WHITE}{Style.BRIGHT}{message}{Style.RESET_ALL}")
+
 
 class DiscordBot(discord.Client):
     def __init__(self, settings_path: Path, session_id: int) -> None:
@@ -34,7 +39,7 @@ class DiscordBot(discord.Client):
         self.add_commands()
 
     def create_run_task(self) -> Task:
-        logging.info("[System] Initializing Discord Bot...")
+        info("[System] Initializing Discord Bot...")
         return asyncio.create_task(self.start(self.config.bot_token))
 
     def create_exit_task(self) -> Task:
@@ -46,13 +51,13 @@ class DiscordBot(discord.Client):
         await self.stop_bot()
 
     async def stop_bot(self) -> None:
-        logging.info("[System] Changing presence to offline...")
+        info("[System] Changing presence to offline...")
         await self.change_presence(status=discord.Status.offline)
 
-        logging.info("[System] Stopping Discord Bot...")
+        info("[System] Stopping Discord Bot...")
         await self.close()
 
-        logging.info("[System] Discord Bot stopped.")
+        info("[System] Discord Bot stopped.")
 
     def format_message(self, message: str, answer: str) -> str:
         user_name = self.cache.user_name
@@ -69,18 +74,18 @@ class DiscordBot(discord.Client):
     def add_events(self) -> None:
         @self.event
         async def on_ready() -> None:
-            logging.info("[Event] Changing presence to online...")
+            info("[Event] Changing presence to online...")
             await self.change_presence(status=discord.Status.online, activity=None)
 
-            logging.info("[Event] Syncing server commands...")
+            info("[Event] Syncing server commands...")
             for guild in self.config.server_guilds:
                 try:
-                    logging.info(f"[Event] Syncing commands in '{guild.id}'...")
+                    info(f"[Event] Syncing commands in '{guild.id}'...")
                     await self.tree.sync(guild=guild)
                 except discord.errors.Forbidden:
-                    logging.info(f"[Event] Failed to sync commands in '{guild.id}' due to insufficient permissions.")
+                    info(f"[Event] Failed to sync commands in '{guild.id}' due to insufficient permissions.")
 
-            logging.info("[Event] Discord Bot is ready.")
+            info("[Event] Discord Bot is ready.")
 
         @self.event
         async def on_error(event_method: str, /, *args: Any, **kwargs: Any) -> None:
@@ -101,14 +106,14 @@ class DiscordBot(discord.Client):
                 interaction: discord.Interaction,
                 message: str
         ) -> None:
-            logging.info("[Command] Receiving message...")
+            info("[Command] Receiving message...")
 
             # noinspection PyUnresolvedReferences
             await interaction.response.defer()
             answer = await self.ai.predict_answer(message)
             await interaction.followup.send(self.format_message(message, answer))
 
-            logging.info("[Command] Message sent.")
+            info("[Command] Message sent.")
 
         @self.tree.command(
             name="기록",
@@ -122,7 +127,7 @@ class DiscordBot(discord.Client):
                 interaction: discord.Interaction,
                 prompt: str
         ) -> None:
-            logging.info("[Command] Recording message...")
+            info("[Command] Recording message...")
 
             self.ai.record_history(f"\n{prompt}\n\n")
             # noinspection PyUnresolvedReferences
@@ -142,7 +147,7 @@ class DiscordBot(discord.Client):
                 before: str,
                 after: str
         ) -> None:
-            logging.info("[Command] Replacing words...")
+            info("[Command] Replacing words...")
 
             self.ai.replace_history_text(before, after)
             # noinspection PyUnresolvedReferences
@@ -162,7 +167,7 @@ class DiscordBot(discord.Client):
                 user_name: str,
                 ai_name: str
         ) -> None:
-            logging.info("[Command] Renaming...")
+            info("[Command] Renaming...")
 
             previous_user = self.cache.user_name
             previous_ai = self.cache.ai_name
@@ -180,7 +185,7 @@ class DiscordBot(discord.Client):
             guilds=self.config.server_guilds
         )
         async def _swap_names(interaction: discord.Interaction) -> None:
-            logging.info("[Command] Swapping...")
+            info("[Command] Swapping...")
 
             previous_user = self.cache.user_name
             previous_ai = self.cache.ai_name
@@ -199,7 +204,7 @@ class DiscordBot(discord.Client):
             guilds=self.config.server_guilds
         )
         async def _reset_prompt(interaction: discord.Interaction) -> None:
-            logging.info("[Command] Clearing conversation...")
+            info("[Command] Clearing conversation...")
 
             self.ai.erase_history()
             # noinspection PyUnresolvedReferences
@@ -211,7 +216,7 @@ class DiscordBot(discord.Client):
             guilds=self.config.server_guilds
         )
         async def _reset_config(interaction: discord.Interaction) -> None:
-            logging.info("[Command] Resetting self.config...")
+            info("[Command] Resetting self.config...")
 
             self.reset_config()
             self.ai.erase_history()
@@ -255,7 +260,7 @@ class DiscordBot(discord.Client):
                 title: str = None,
                 extra: str = None
         ) -> None:
-            logging.info("[Command] Changing self.config...")
+            info("[Command] Changing self.config...")
 
             content = ""
             if creativity is not None:
