@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from asyncio import Task
 from pathlib import Path
 from typing import Any
@@ -33,7 +34,7 @@ class DiscordBot(discord.Client):
         self.add_commands()
 
     def create_run_task(self) -> Task:
-        print("[System] Initializing Discord Bot...")
+        logging.info("[System] Initializing Discord Bot...")
         return asyncio.create_task(self.start(self.config.bot_token))
 
     def create_exit_task(self) -> Task:
@@ -45,13 +46,13 @@ class DiscordBot(discord.Client):
         await self.stop_bot()
 
     async def stop_bot(self) -> None:
-        print("[System] Changing presence to offline...")
+        logging.info("[System] Changing presence to offline...")
         await self.change_presence(status=discord.Status.offline)
 
-        print("[System] Stopping Discord Bot...")
+        logging.info("[System] Stopping Discord Bot...")
         await self.close()
 
-        print("[System] Discord Bot stopped.")
+        logging.info("[System] Discord Bot stopped.")
 
     def format_message(self, message: str, answer: str) -> str:
         user_name = self.cache.user_name
@@ -68,42 +69,42 @@ class DiscordBot(discord.Client):
     def add_events(self):
         @self.event
         async def on_ready():
-            print("[Event] Changing presence to online...")
+            logging.info("[Event] Changing presence to online...")
             await self.change_presence(status=discord.Status.online, activity=None)
 
-            print("[Event] Syncing server commands...")
+            logging.info("[Event] Syncing server commands...")
             for guild in self.config.server_guilds:
                 try:
-                    print(f"[Event] Syncing commands in '{guild.id}'...")
+                    logging.info(f"[Event] Syncing commands in '{guild.id}'...")
                     await self.tree.sync(guild=guild)
                 except discord.errors.Forbidden:
-                    print(f"[Event] Failed to sync commands in '{guild.id}' due to insufficient permissions.")
+                    logging.info(f"[Event] Failed to sync commands in '{guild.id}' due to insufficient permissions.")
 
-            print("[Event] Discord Bot is ready.")
+            logging.info("[Event] Discord Bot is ready.")
 
         @self.event
         async def on_error(event_method: str, /, *args: Any, **kwargs: Any) -> None:
-            print(f"[Event] Error occurred in '{event_method}' event.")
-            print(f"[Event] Args: {args}")
-            print(f"[Event] Kwargs: {kwargs}")
+            logging.info(f"[Event] Error occurred in '{event_method}' event.")
+            logging.info(f"[Event] Args: {args}")
+            logging.info(f"[Event] Kwargs: {kwargs}")
 
     def add_commands(self):
         @self.tree.command(name="대화", description="인공지능과 대화", guilds=self.config.server_guilds)
         @app_commands.describe(message="메시지")
         async def _send_message(interaction: discord.Interaction, message: str):
-            print("[Command] Receiving message...")
+            logging.info("[Command] Receiving message...")
 
             # noinspection PyUnresolvedReferences
             await interaction.response.defer()
             answer = await self.ai.predict_answer(message)
             await interaction.followup.send(self.format_message(message, answer))
 
-            print("[Command] Message sent.")
+            logging.info("[Command] Message sent.")
 
         @self.tree.command(name="기록", description="대화 마지막에 이어서 문장을 삽입", guilds=self.config.server_guilds)
         @app_commands.describe(prompt="프롬프트")
         async def _record_prompt(interaction: discord.Interaction, prompt: str):
-            print("[Command] Recording message...")
+            logging.info("[Command] Recording message...")
 
             self.ai.record_history(f"\n{prompt}\n\n")
             # noinspection PyUnresolvedReferences
@@ -112,7 +113,7 @@ class DiscordBot(discord.Client):
         @self.tree.command(name="바꾸기", description="모든 대화에서 특정 단어를 치환", guilds=self.config.server_guilds)
         @app_commands.describe(before="기존 단어", after="새 단어")
         async def _replace_prompt_text(interaction: discord.Interaction, before: str, after: str):
-            print("[Command] Replacing words...")
+            logging.info("[Command] Replacing words...")
 
             self.ai.replace_history_text(before, after)
             # noinspection PyUnresolvedReferences
@@ -121,7 +122,7 @@ class DiscordBot(discord.Client):
         @self.tree.command(name="이름", description="이름 변경", guilds=self.config.server_guilds)
         @app_commands.describe(user_name="당신 이름", ai_name="상대 이름")
         async def _replace_names(interaction: discord.Interaction, user_name: str, ai_name: str):
-            print("[Command] Renaming...")
+            logging.info("[Command] Renaming...")
 
             previous_user = self.cache.user_name
             previous_ai = self.cache.ai_name
@@ -135,7 +136,7 @@ class DiscordBot(discord.Client):
 
         @self.tree.command(name="스왑", description="이름 스왑", guilds=self.config.server_guilds)
         async def _swap_names(interaction: discord.Interaction):
-            print("[Command] Swapping...")
+            logging.info("[Command] Swapping...")
 
             previous_user = self.cache.user_name
             previous_ai = self.cache.ai_name
@@ -150,7 +151,7 @@ class DiscordBot(discord.Client):
 
         @self.tree.command(name="정리", description="대화 내용 비우기", guilds=self.config.server_guilds)
         async def _reset_prompt(interaction: discord.Interaction):
-            print("[Command] Clearing conversation...")
+            logging.info("[Command] Clearing conversation...")
 
             self.ai.erase_history()
             # noinspection PyUnresolvedReferences
@@ -158,7 +159,7 @@ class DiscordBot(discord.Client):
 
         @self.tree.command(name="초기화", description="설정 초기화", guilds=self.config.server_guilds)
         async def _reset_config(interaction: discord.Interaction):
-            print("[Command] Resetting self.config...")
+            logging.info("[Command] Resetting self.config...")
 
             self.reset_config()
             self.ai.erase_history()
@@ -192,7 +193,7 @@ class DiscordBot(discord.Client):
                           relationship: int = None,
                           title: str = None,
                           extra: str = None):
-            print("[Command] Changing self.config...")
+            logging.info("[Command] Changing self.config...")
 
             content = ""
             if creativity is not None:

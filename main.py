@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+import logging
 
 from colorama import Fore, Style
 
@@ -23,7 +24,7 @@ if __name__ == '__main__':
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print(
+        logging.info(
             f"{Fore.RED}{Style.BRIGHT}"
             "[System] Keyboard Interrupted.\n"
             "[System] Do not stop the bot with keyboard interrupt.\n"
