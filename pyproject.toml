@@ -10,6 +10,7 @@ python = "^3.10"
 openai = "^0.27.2"
 discord-py = "^2.2.2"
 numpy = "^1.24.2"
+datamodel-code-generator = "^0.17.2"
 
 
 [build-system]
