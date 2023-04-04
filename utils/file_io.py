@@ -2,11 +2,26 @@ import json
 from pathlib import Path
 from typing import Dict, Union
 
+import yaml
+
 PathLike = Union[str, Path]
 
 
 def remove_file(path: PathLike) -> None:
     Path(path).unlink(missing_ok=True)
+
+
+def load_yaml(path: PathLike) -> Dict:
+    try:
+        with Path(path).open(encoding='utf-8') as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        return {}
+
+
+def save_yaml(path: PathLike, data: Dict) -> None:
+    with Path(path).open('w', encoding='utf-8') as f:
+        yaml.safe_dump(data, f, allow_unicode=True, default_flow_style=False)
 
 
 def load_json(path: PathLike) -> Dict:
