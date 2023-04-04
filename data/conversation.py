@@ -13,7 +13,7 @@ class Session(BaseModel):
     id: int
     language: str
     timezone: str
-    timestamp: str
+    creationTime: str
 
 
 class Participant(BaseModel):
