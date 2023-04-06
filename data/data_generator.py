@@ -2,10 +2,8 @@ import datetime
 from typing import Optional, Iterator, Iterable, Any
 
 from data import prompt, conversation
-from data import prompt_parser, conversation_parser
 from data.conversation import Trait as UserTrait, Message
 from data.prompt import Trait, Choice
-from utils.file_io import load_txt
 
 
 def trim(elements: Iterable[Any]) -> Iterator[Any]:
@@ -120,16 +118,3 @@ class PromptHistoryGenerator:
 
     def get_sender_name(self, sender: str) -> Optional[str]:
         return next((p.name for p in self.participants if p.role == sender), None)
-
-
-if __name__ == '__main__':
-    _default_prompt = load_txt('prompt.txt')
-    _prompt_model = prompt_parser.parse('prompt.yaml')
-    _default_conversation_model = conversation_parser.parse('conversation.yaml')
-
-    _generator = PromptHistoryGenerator(_default_prompt, _prompt_model, _default_conversation_model)
-
-    _conversation_model = conversation_parser.parse('../cache/1234567890.yaml')
-    _generator.initialize(_conversation_model)
-
-    print(_generator.get_prompt_history())
