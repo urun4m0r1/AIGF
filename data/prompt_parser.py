@@ -1,12 +1,12 @@
 from pathlib import Path
+from typing import Union
 
 from data.prompt import *
 from utils.file_io import load_yaml
 
-CURRENT_DIR = Path(__file__).parent
-DATA_PATH = 'prompt.yaml'
+PathLike = Union[str, Path]
 
 
-def parse() -> Model:
-    data = load_yaml(CURRENT_DIR / DATA_PATH)
+def parse(data_path: PathLike) -> Model:
+    data = load_yaml(data_path)
     return Model.parse_obj(data)

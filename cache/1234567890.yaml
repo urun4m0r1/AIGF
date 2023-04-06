@@ -13,7 +13,7 @@ settings:
   traits:
     - category: intelligence
       style: normal
-    - category: relations
+    - category: relationship
       style: girlfriend
   userPrompt: '{0} and {1} were born on the same day.'
   creativityLevel: 3
