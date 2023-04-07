@@ -1,4 +1,3 @@
-import datetime
 from typing import Optional, Iterator, Iterable, Any
 
 from data import prompt, conversation
@@ -12,39 +11,26 @@ def trim(elements: Iterable[Any]) -> Iterator[Any]:
             yield element
 
 
-class PromptHistoryGenerator:
+class History:
     def __init__(
             self,
             default_prompt: str,
             prompt_model: prompt.Model,
-            default_conversation_model: conversation.Model
+            conversation_model: conversation.Model
     ) -> None:
         self.default_prompt = default_prompt
         self.prompt_model = prompt_model
-        self.default_conversation_model = default_conversation_model
-        self.default_conversation_model.messages = []
+        self.conversation_model = conversation_model
+
         self.traits = self.prompt_model.traits
 
-        self.conversation_model = None
-        self.session = None
-        self.settings = None
-        self.participants = None
-        self.user_traits = None
-        self.messages = None
-
-        self.reset()
-
-    def reset(self) -> None:
-        self.initialize(self.default_conversation_model)
-        self.session.creationTime = datetime.datetime.now().isoformat()
-
-    def initialize(self, conversation_model: conversation.Model) -> None:
-        self.conversation_model = conversation_model
         self.session = self.conversation_model.session
         self.settings = self.conversation_model.settings
+        self.messages = self.conversation_model.messages
         self.participants = self.settings.participants
         self.user_traits = self.settings.traits
-        self.messages = self.conversation_model.messages
+
+
 
     def get_prompt_history(self) -> str:
         full_prompt = self.get_full_prompt()

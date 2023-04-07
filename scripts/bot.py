@@ -21,10 +21,7 @@ def info(message: str) -> None:
 
 
 class DiscordBot(discord.Client):
-    def __init__(self, settings_path: Path, session_id: int) -> None:
-        self.settings_path = settings_path
-        self.session_id = session_id
-
+    def __init__(self, config: AppConfig) -> None:
         intents = discord.Intents.default()
         intents.message_content = True
 

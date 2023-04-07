@@ -1,5 +1,5 @@
 session:
-  id: 0
+  id: '0'
   language: ko-KR
   timezone: Seoul
   creationTime: '2023-04-03T12:00:00Z'

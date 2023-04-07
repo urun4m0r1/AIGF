@@ -3,13 +3,10 @@ import openai
 from discord import app_commands
 
 from scripts.config import AppConfig
-from settings.session_cache import SessionCache
-
 
 class OpenAIConversation:
-    def __init__(self, config: AppConfig, cache: SessionCache):
+    def __init__(self, config: AppConfig):
         self._config = config
-        self._cache = cache
 
         openai.organization = config.open_ai_organization_id
         openai.api_key = config.open_ai_api_key
@@ -133,61 +130,3 @@ creativity_map = {
     3: 0.7,
     4: 0.9,
 }
-
-creativities = [
-    app_commands.Choice(name="고지식함", value=0),
-    app_commands.Choice(name="명확함", value=1),
-    app_commands.Choice(name="평범함", value=2),
-    app_commands.Choice(name="창의적임", value=3),
-    app_commands.Choice(name="헛소리꾼", value=4),
-]
-
-intelligences = [
-    app_commands.Choice(name="멍청함", value=0),
-    app_commands.Choice(name="평범함", value=1),
-    app_commands.Choice(name="지적임", value=2),
-]
-
-persornalities = [
-    app_commands.Choice(name="평범함", value=0),
-    app_commands.Choice(name="츤데레", value=1),
-    app_commands.Choice(name="얀데레", value=2),
-    app_commands.Choice(name="쿨데레", value=3),
-    app_commands.Choice(name="메가데레", value=4),
-]
-
-moods = [
-    app_commands.Choice(name="평범함", value=0),
-    app_commands.Choice(name="기쁨", value=1),
-    app_commands.Choice(name="슬픔", value=2),
-    app_commands.Choice(name="화남", value=3),
-    app_commands.Choice(name="놀람", value=4),
-    app_commands.Choice(name="무표정", value=5),
-]
-
-reputations = [
-    app_commands.Choice(name="평범함", value=0),
-    app_commands.Choice(name="영웅", value=1),
-    app_commands.Choice(name="불한당", value=2),
-]
-
-ages = [
-    app_commands.Choice(name="유아", value=0),
-    app_commands.Choice(name="청소년", value=1),
-    app_commands.Choice(name="사춘기", value=2),
-    app_commands.Choice(name="대학생", value=3),
-    app_commands.Choice(name="성인", value=4),
-]
-
-relationships = [
-    app_commands.Choice(name="평범함", value=0),
-    app_commands.Choice(name="소꿉친구", value=1),
-    app_commands.Choice(name="여동생", value=2),
-    app_commands.Choice(name="썸녀", value=3),
-    app_commands.Choice(name="연인", value=4),
-    app_commands.Choice(name="후배", value=5),
-    app_commands.Choice(name="선배", value=6),
-    app_commands.Choice(name="엄마", value=7),
-    app_commands.Choice(name="딸", value=8),
-    app_commands.Choice(name="선생님", value=9),
-]
