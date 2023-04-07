@@ -290,4 +290,4 @@ pyrightconfig.json
 
 # AIGF
 settings.ini
-.temp/
+.cache/

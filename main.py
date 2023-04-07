@@ -39,7 +39,7 @@ def test_prompt_history_generator():
 
     generator = PromptHistoryGenerator(default_prompt, prompt_model, default_conversation_model)
 
-    conversation_model = conversation_parser.parse('./cache/1234567890.yaml')
+    conversation_model = conversation_parser.parse('./.cache/1234567890.yaml')
     generator.initialize(conversation_model)
 
     print(generator.get_prompt_history())
