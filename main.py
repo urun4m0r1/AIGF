@@ -11,7 +11,7 @@ from utils.file_io import load_txt
 
 logging.basicConfig(level=logging.INFO)
 
-SETTINGS_PATH = Path('./settings.ini')
+SETTINGS_PATH = Path('config.ini')
 DEFAULT_PROMPT_PATH = Path('./data/prompt.txt')
 PROMPT_MODEL_PATH = Path('./data/prompt.yaml')
 DEFAULT_CONVERSATION_MODEL_PATH = Path('./data/conversation.yaml')

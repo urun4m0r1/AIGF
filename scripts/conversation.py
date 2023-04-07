@@ -2,7 +2,7 @@ import re
 import openai
 from discord import app_commands
 
-from settings.config import AppConfig
+from scripts.config import AppConfig
 from settings.session_cache import SessionCache
 
 
@@ -11,8 +11,8 @@ class OpenAIConversation:
         self._config = config
         self._cache = cache
 
-        openai.organization = config.organization_id
-        openai.api_key = config.api_key
+        openai.organization = config.open_ai_organization_id
+        openai.api_key = config.open_ai_api_key
 
         self.prompt = None
         self.history = self._cache.load_history()

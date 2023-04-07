@@ -9,7 +9,7 @@ from colorama import Fore, Style
 from discord import app_commands
 
 from scripts import conversation as conv
-from settings.config import AppConfig
+from scripts.config import AppConfig
 
 
 # TODO: 인격 슬롯 3개 변경 가능하게 추가
