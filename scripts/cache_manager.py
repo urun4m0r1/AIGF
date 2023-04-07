@@ -40,7 +40,7 @@ class CacheManager:
         return history
 
     def load_cache(self, session_id: str) -> Optional[History]:
-        caches = self.config.get_caches()
+        caches = Path(self.config.cache_path).glob('*.yaml')
         cache = next((cache for cache in caches if cache.stem == session_id), None)
         if cache is None:
             return None
@@ -56,6 +56,9 @@ class CacheManager:
 
     def remove_cache(self, session_id: str) -> None:
         remove_file(self._get_cache_path(session_id))
+
+    def remove_caches(self) -> None:
+        remove_file(self.config.cache_path)
 
     def _get_cache_path(self, session_id: str) -> Path:
         return self.config.cache_path / f'{session_id}.yaml'

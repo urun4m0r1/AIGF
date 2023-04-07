@@ -1,8 +1,5 @@
 from configparser import ConfigParser
 from pathlib import Path
-from typing import Iterable
-
-from utils.file_io import remove_file
 
 
 class AppConfig:
@@ -32,9 +29,3 @@ class AppConfig:
 
         # [Servers]
         self.server_guilds = self._servers.values()
-
-    def get_caches(self) -> Iterable[Path]:
-        return Path(self.cache_path).glob('*.yaml')
-
-    def reset_cache(self) -> None:
-        remove_file(self.cache_path)
