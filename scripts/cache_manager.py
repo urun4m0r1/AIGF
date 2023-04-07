@@ -1,7 +1,7 @@
 import copy
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Iterable
 
 from data import prompt_parser, conversation_parser
 from data.history import History
@@ -26,6 +26,11 @@ class CacheManager:
         else:
             return self.create_cache(session_id)
 
+    def get_all(self) -> Iterable[History]:
+        for cache_path in self._get_caches_path():
+            conversation_cache = conversation_parser.parse(cache_path)
+            yield History(self._default_prompt, self._prompt_model, conversation_cache)
+
     def create_cache(self, session_id: str) -> History:
         history = copy.deepcopy(self.default_history)
 
@@ -40,12 +45,12 @@ class CacheManager:
         return history
 
     def load_cache(self, session_id: str) -> Optional[History]:
-        caches = Path(self.config.cache_path).glob('*.yaml')
-        cache = next((cache for cache in caches if cache.stem == session_id), None)
-        if cache is None:
+        caches_path = self._get_caches_path()
+        cache_path = next((path for path in caches_path if path.stem == session_id), None)
+        if cache_path is None:
             return None
 
-        conversation_cache = conversation_parser.parse(cache)
+        conversation_cache = conversation_parser.parse(cache_path)
         return History(self._default_prompt, self._prompt_model, conversation_cache)
 
     def save_cache(self, history: History) -> None:
@@ -59,6 +64,9 @@ class CacheManager:
 
     def remove_caches(self) -> None:
         remove_file(self.config.cache_path)
+
+    def _get_caches_path(self) -> Iterable[Path]:
+        return Path(self.config.cache_path).glob('*.yaml')
 
     def _get_cache_path(self, session_id: str) -> Path:
         return self.config.cache_path / f'{session_id}.yaml'
