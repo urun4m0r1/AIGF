@@ -18,6 +18,12 @@ settings:
   userPrompt: ''
   creativityLevel: 3
   sendersSwapped: false
+  scrollAmount: 6
+  engineName: 'text-davinci-003'
+  maxTokens: 512
+  topP: 1
+  frequencyPenalty: 0.0
+  presencePenalty: 0.6
 messages:
   - sender: user
     text: 'Hello!'
