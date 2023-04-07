@@ -9,7 +9,7 @@ from scripts.config import AppConfig
 from utils.file_io import load_txt, save_yaml, remove_file
 
 
-class HistoryManager:
+class CacheManager:
     def __init__(self, config: AppConfig) -> None:
         self.config = config
 
@@ -19,7 +19,7 @@ class HistoryManager:
 
         self.default_history = History(self._default_prompt, self._prompt_model, self._conversation_model)
 
-    def get_cache(self, session_id: str) -> History:
+    def get(self, session_id: str) -> History:
         cache = self.load_cache(session_id)
         if cache:
             return cache
