@@ -7,6 +7,7 @@ import discord
 from colorama import Fore, Style
 from discord import app_commands, Object
 
+from data.conversation import Message
 from scripts.cache_manager import CacheManager
 from scripts.config import AppConfig
 from scripts.conversation import Conversation
@@ -123,15 +124,25 @@ class DiscordBot(discord.Client):
 
             # noinspection PyUnresolvedReferences
             await interaction.response.defer()
-            answer = await conversation.predict_answer(message)
-
-            user_name = conversation.user_name
-            ai_name = conversation.ai_name
-            result = f"**{user_name}**: {message}\n**{ai_name}**: {answer}"
-
+            (question, answer) = await conversation.predict_answer(message)
+            result = conversation.format_message(question, answer)
             await interaction.followup.send(result)
 
             info("[Command] Message sent.")
+
+        @self._command(
+            name="재시도",
+            description="마지막 대화를 다시 시도",
+            guilds=self._guilds)
+        async def _retry_predict(interaction: discord.Interaction) -> None:
+            conversation = self.get_conversation(interaction)
+            info("[Command] Retrying prediction...")
+
+            # noinspection PyUnresolvedReferences
+            await interaction.response.defer()
+            (question, answer) = await conversation.re_predict_last()
+            result = conversation.format_message(question, answer)
+            await interaction.followup.send(result)
 
         @self._command(
             name="기록",

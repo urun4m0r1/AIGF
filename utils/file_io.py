@@ -20,6 +20,8 @@ def load_yaml(path: PathLike) -> Dict:
 
 
 def save_yaml(path: PathLike, data: Dict) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+
     with Path(path).open('w', encoding='utf-8') as f:
         yaml.safe_dump(data, f, allow_unicode=True, default_flow_style=False)
 
@@ -33,6 +35,8 @@ def load_json(path: PathLike) -> Dict:
 
 
 def save_json(path: PathLike, data: Dict) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+
     with Path(path).open('w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
@@ -46,4 +50,6 @@ def load_txt(path: PathLike) -> str:
 
 
 def save_txt(path: PathLike, text: str) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+
     Path(path).write_text(text, encoding='utf-8')

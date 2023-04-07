@@ -40,9 +40,19 @@ class Conversation:
     def user_name(self) -> str:
         return self.cache.get_sender_name('user')
 
+    @user_name.setter
+    def user_name(self, value: str):
+        self.cache.participants[0].name = value
+        self._save_cache()
+
     @property
     def ai_name(self) -> str:
         return self.cache.get_sender_name('ai')
+
+    @ai_name.setter
+    def ai_name(self, value: str):
+        self.cache.participants[1].name = value
+        self._save_cache()
 
     @property
     def prompt(self) -> str:
@@ -92,7 +102,10 @@ class Conversation:
 
         return max_tokens, current_tokens, prompt_tokens, completion_tokens
 
-    async def predict_answer(self, message: str) -> str:
+    def format_message(self, question: Message, answer: Message) -> str:
+        return f"**{self.user_name}**: {question.text}\n**{self.ai_name}**: {answer.text}"
+
+    async def predict_answer(self, message: str) -> (Message, Message):
         question = Message(sender='user', text=message, timestamp=datetime.now().isoformat())
         answer = Message(sender='ai', text='', timestamp='')
 
@@ -103,9 +116,9 @@ class Conversation:
         answer.timestamp = datetime.now().isoformat()
         self._save_cache()
 
-        return answer.text
+        return question, answer
 
-    async def re_predict_last(self) -> str:
+    async def re_predict_last(self) -> (Message, Message):
         if len(self.cache.messages) == 0:
             return ''
 
@@ -122,7 +135,7 @@ class Conversation:
         answer.timestamp = datetime.now().isoformat()
         self._save_cache()
 
-        return answer.text
+        return self.cache.messages[-2], answer
 
     def record_prompt(self, message: str):
         prompt = Message(sender='text', text=message, timestamp=datetime.now().isoformat())
@@ -159,21 +172,21 @@ class Conversation:
 
     def swap_names(self):
         for message in self.cache.messages:
-            message.text = message.text.replace(self.cache.user_name, '{temp}')
-            message.text = message.text.replace(self.cache.ai_name, self.cache.user_name)
-            message.text = message.text.replace('{temp}', self.cache.ai_name)
+            message.text = message.text.replace(self.user_name, '{temp}')
+            message.text = message.text.replace(self.ai_name, self.user_name)
+            message.text = message.text.replace('{temp}', self.ai_name)
 
-        self.cache.user_name, self.cache.ai_name = self.cache.ai_name, self.cache.user_name
+        self.user_name, self.ai_name = self.ai_name, self.user_name
 
         self._save_cache()
 
     def replace_names(self, user_name: str, ai_name: str):
         for message in self.cache.messages:
-            message.text = message.text.replace(self.cache.user_name, user_name)
-            message.text = message.text.replace(self.cache.ai_name, ai_name)
+            message.text = message.text.replace(self.user_name, user_name)
+            message.text = message.text.replace(self.ai_name, ai_name)
 
-        self.cache.user_name = user_name
-        self.cache.ai_name = ai_name
+        self.user_name = user_name
+        self.ai_name = ai_name
 
         self._save_cache()
 
