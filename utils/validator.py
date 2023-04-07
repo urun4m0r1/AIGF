@@ -1,5 +1,5 @@
-from typing import Optional
 from numbers import Real
+from typing import Optional
 
 
 def is_text(value: Optional[str]) -> bool:

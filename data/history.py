@@ -30,8 +30,6 @@ class History:
         self.participants = self.settings.participants
         self.user_traits = self.settings.traits
 
-
-
     def get_prompt_history(self) -> str:
         full_prompt = self.get_full_prompt()
         full_messages = self.get_full_messages()
