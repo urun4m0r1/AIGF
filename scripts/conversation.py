@@ -1,35 +1,77 @@
 import re
-import openai
-from discord import app_commands
 
+import openai
+
+from data.history import History
 from scripts.config import AppConfig
 
-class OpenAIConversation:
-    def __init__(self, config: AppConfig):
-        self._config = config
+CREATIVITY_MAP = {
+    0: 0.1,
+    1: 0.3,
+    2: 0.5,
+    3: 0.7,
+    4: 0.9,
+}
+
+
+class Conversation:
+    def __init__(self, config: AppConfig, cache: History):
+        self.config = config
+        self.cache = cache
 
         openai.organization = config.open_ai_organization_id
         openai.api_key = config.open_ai_api_key
 
-        self.prompt = None
-        self.history = self._cache.load_history()
+        self.scroll_amount = cache.settings.scrollAmount
+        self.engine_name = cache.settings.engineName
+        self.max_tokens = cache.settings.maxTokens
+        self.top_p = cache.settings.topP
+        self.frequency_penalty = cache.settings.frequencyPenalty
+        self.presence_penalty = cache.settings.presencePenalty
 
-        self.initialize_prompt()
+    @property
+    def user_name(self) -> str:
+        return self.cache.get_sender_name('user')
 
-    def initialize_prompt(self):
-        self.prompt = self._config.default_prompt.format(self._cache.user_name, self._cache.ai_name)
+    @property
+    def ai_name(self) -> str:
+        return self.cache.get_sender_name('ai')
+
+    @property
+    def prompt(self) -> str:
+        return self.cache.get_full_prompt()
+
+    @property
+    def temperature(self) -> float:
+        return CREATIVITY_MAP[self.creativity_level]
+
+    @property
+    def creativity_level(self) -> int:
+        return self.cache.settings.creativityLevel
+
+    @creativity_level.setter
+    def creativity_level(self, value: int):
+        self.cache.settings.creativityLevel = value
+
+    @property
+    def senders_swapped(self) -> bool:
+        return self.cache.settings.sendersSwapped
+
+    @senders_swapped.setter
+    def senders_swapped(self, value: bool):
+        self.cache.settings.sendersSwapped = value
 
     async def _predict(self) -> str:
         try:
             response = await openai.Completion.acreate(
-                engine=self._config.engine_name,
-                prompt=f"{self.prompt}\n{self.history}",
-                temperature=self._get_temperature(),
-                max_tokens=self._config.max_tokens,
-                top_p=self._config.top_p,
-                frequency_penalty=self._config.frequency_penalty,
-                presence_penalty=self._config.presence_penalty,
-                stop=[f'{self._cache.user_name}:', f'{self._cache.ai_name}:'],
+                engine=self.engine_name,
+                prompt=self.prompt,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                frequency_penalty=self.frequency_penalty,
+                presence_penalty=self.presence_penalty,
+                stop=[f'{self.user_name}:', f'{self.ai_name}:'],
             )
         except openai.error.InvalidRequestError as e:
             if e.user_message.startswith("This model's maximum context length is"):
@@ -42,8 +84,7 @@ class OpenAIConversation:
 
     def _scroll_history(self):
         print('[Conversation] Scrolling history...')
-        lines = self.history.splitlines()[self._config.scroll_amount:]
-        self.history = '\n'.join(lines)
+        self.cache.messages = self.cache.messages[self.scroll_amount:]
 
     @staticmethod
     def _parse_tokens_from_error(text: str):
@@ -59,11 +100,15 @@ class OpenAIConversation:
 
         return max_tokens, current_tokens, prompt_tokens, completion_tokens
 
-    def _get_temperature(self) -> float:
-        return creativity_map[self._cache.creativity]
+    async def predict_answer(self, message: str) -> str:
+        self.record_history(f"\n{self.user_name}: {message}\n{self.ai_name}:")
+
+        answer = await self._predict()
+        self.record_history(f" {answer}\n")
+        return answer
 
     def _save_history(self):
-        self._cache.save_history(self.history)
+        self.cache.save_history(self.history)
 
     def record_history(self, history: str):
         # TODO: token 기반 rolling history 적용
@@ -74,28 +119,21 @@ class OpenAIConversation:
         self.history = ""
         self._save_history()
 
-    async def predict_answer(self, message: str) -> str:
-        self.record_history(f"{self._cache.user_name}: {message}\n{self._cache.ai_name}:")
-
-        answer = await self._predict()
-        self.record_history(f" {answer}\n")
-        return answer
-
     def replace_history_text(self, old_text: str, new_text: str):
         self.history = self.history.replace(old_text, new_text)
         self._save_history()
 
     def replace_names(self, user_name: str, ai_name: str):
-        self.replace_history_text(self._cache.user_name, user_name)
-        self.replace_history_text(self._cache.ai_name, ai_name)
-        self._cache.user_name = user_name
-        self._cache.ai_name = ai_name
-        self._cache.save_settings()
+        self.replace_history_text(self.cache.user_name, user_name)
+        self.replace_history_text(self.cache.ai_name, ai_name)
+        self.cache.user_name = user_name
+        self.cache.ai_name = ai_name
+        self.cache.save_settings()
         self.initialize_prompt()
 
     def change_creativity(self, creativity: int):
-        self._cache.creativity = creativity
-        self._cache.save_settings()
+        self.cache.creativity = creativity
+        self.cache.save_settings()
 
     # TODO: 기능 구현
     def change_intelligence(self, intelligence: int):
@@ -121,12 +159,3 @@ class OpenAIConversation:
 
     def change_extra(self, extra: str):
         pass
-
-
-creativity_map = {
-    0: 0.1,
-    1: 0.3,
-    2: 0.5,
-    3: 0.7,
-    4: 0.9,
-}
