@@ -1,8 +1,11 @@
 import re
+from datetime import datetime
 
 import openai
 
+from data.conversation import Message
 from data.history import History
+from scripts.cache_manager import CacheManager
 from scripts.config import AppConfig
 
 CREATIVITY_MAP = {
@@ -15,8 +18,9 @@ CREATIVITY_MAP = {
 
 
 class Conversation:
-    def __init__(self, config: AppConfig, cache: History):
+    def __init__(self, config: AppConfig, cache_manager: CacheManager, cache: History):
         self.config = config
+        self.cache_manager = cache_manager
         self.cache = cache
 
         openai.organization = config.open_ai_organization_id
@@ -29,6 +33,9 @@ class Conversation:
         self.frequency_penalty = cache.settings.frequencyPenalty
         self.presence_penalty = cache.settings.presencePenalty
 
+    def _save_cache(self):
+        self.cache_manager.save_cache(self.cache)
+
     @property
     def user_name(self) -> str:
         return self.cache.get_sender_name('user')
@@ -39,27 +46,11 @@ class Conversation:
 
     @property
     def prompt(self) -> str:
-        return self.cache.get_full_prompt()
+        return self.cache.get_prompt_history()
 
     @property
     def temperature(self) -> float:
-        return CREATIVITY_MAP[self.creativity_level]
-
-    @property
-    def creativity_level(self) -> int:
-        return self.cache.settings.creativityLevel
-
-    @creativity_level.setter
-    def creativity_level(self, value: int):
-        self.cache.settings.creativityLevel = value
-
-    @property
-    def senders_swapped(self) -> bool:
-        return self.cache.settings.sendersSwapped
-
-    @senders_swapped.setter
-    def senders_swapped(self, value: bool):
-        self.cache.settings.sendersSwapped = value
+        return CREATIVITY_MAP[self.cache.settings.creativityLevel]
 
     async def _predict(self) -> str:
         try:
@@ -85,6 +76,7 @@ class Conversation:
     def _scroll_history(self):
         print('[Conversation] Scrolling history...')
         self.cache.messages = self.cache.messages[self.scroll_amount:]
+        self._save_cache()
 
     @staticmethod
     def _parse_tokens_from_error(text: str):
@@ -101,39 +93,94 @@ class Conversation:
         return max_tokens, current_tokens, prompt_tokens, completion_tokens
 
     async def predict_answer(self, message: str) -> str:
-        self.record_history(f"\n{self.user_name}: {message}\n{self.ai_name}:")
+        question = Message(sender='user', text=message, timestamp=datetime.now().isoformat())
+        answer = Message(sender='ai', text='', timestamp='')
 
-        answer = await self._predict()
-        self.record_history(f" {answer}\n")
-        return answer
+        self.cache.messages.append(question)
+        self.cache.messages.append(answer)
 
-    def _save_history(self):
-        self.cache.save_history(self.history)
+        answer.text = await self._predict()
+        answer.timestamp = datetime.now().isoformat()
+        self._save_cache()
 
-    def record_history(self, history: str):
-        # TODO: token 기반 rolling history 적용
-        self.history += history
-        self._save_history()
+        return answer.text
 
-    def erase_history(self):
-        self.history = ""
-        self._save_history()
+    async def re_predict_last(self) -> str:
+        if len(self.cache.messages) == 0:
+            return ''
 
-    def replace_history_text(self, old_text: str, new_text: str):
-        self.history = self.history.replace(old_text, new_text)
-        self._save_history()
+        if self.cache.messages[-1].sender in ['user', 'text']:
+            return ''
+
+        self.cache.messages = self.cache.messages[:-1]
+
+        answer = Message(sender='ai', text='', timestamp='')
+
+        self.cache.messages.append(answer)
+
+        answer.text = await self._predict()
+        answer.timestamp = datetime.now().isoformat()
+        self._save_cache()
+
+        return answer.text
+
+    def record_prompt(self, message: str):
+        prompt = Message(sender='text', text=message, timestamp=datetime.now().isoformat())
+
+        self.cache.messages.append(prompt)
+        self._save_cache()
+
+    def erase_messages(self):
+        self.cache.messages.clear()
+        self._save_cache()
+
+    def undo(self):
+        if len(self.cache.messages) == 0:
+            return
+
+        last_message = self.cache.messages[-1]
+
+        if last_message.sender == 'user':
+            return
+
+        elif last_message.sender == 'text':
+            self.cache.messages = self.cache.messages[:-1]
+
+        elif last_message.sender == 'ai':
+            self.cache.messages = self.cache.messages[:-2]
+
+        self._save_cache()
+
+    def replace_text(self, old_text: str, new_text: str):
+        for message in self.cache.messages:
+            message.text = message.text.replace(old_text, new_text)
+
+        self._save_cache()
+
+    def swap_names(self):
+        for message in self.cache.messages:
+            message.text = message.text.replace(self.cache.user_name, '{temp}')
+            message.text = message.text.replace(self.cache.ai_name, self.cache.user_name)
+            message.text = message.text.replace('{temp}', self.cache.ai_name)
+
+        self.cache.user_name, self.cache.ai_name = self.cache.ai_name, self.cache.user_name
+
+        self._save_cache()
 
     def replace_names(self, user_name: str, ai_name: str):
-        self.replace_history_text(self.cache.user_name, user_name)
-        self.replace_history_text(self.cache.ai_name, ai_name)
+        for message in self.cache.messages:
+            message.text = message.text.replace(self.cache.user_name, user_name)
+            message.text = message.text.replace(self.cache.ai_name, ai_name)
+
         self.cache.user_name = user_name
         self.cache.ai_name = ai_name
-        self.cache.save_settings()
-        self.initialize_prompt()
 
-    def change_creativity(self, creativity: int):
-        self.cache.creativity = creativity
-        self.cache.save_settings()
+        self._save_cache()
+
+    def change_creativity(self, creativity_level: int):
+        self.cache.settings.creativityLevel = creativity_level
+
+        self._save_cache()
 
     # TODO: 기능 구현
     def change_intelligence(self, intelligence: int):

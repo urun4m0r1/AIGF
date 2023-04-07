@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from asyncio import Task
-from typing import Any, Iterator
+from typing import Any, Iterator, Tuple
 
 import discord
 from colorama import Fore, Style
@@ -41,19 +41,19 @@ class DiscordBot(discord.Client):
         self._add_commands()
 
     def get_conversation(self, interaction: discord.Interaction):
-        guild_id = interaction.guild_id
+        guild_id = str(interaction.guild_id)
         if guild_id in self.conversations:
             return self.conversations[guild_id]
         else:
             cache = self.cache_manager.get(str(guild_id))
-            conversation = Conversation(self.config, cache)
+            conversation = Conversation(self.config, self.cache_manager, cache)
             self.conversations[guild_id] = conversation
             return conversation
 
-    def initialize_conversations(self) -> Iterator[(str, Conversation)]:
+    def initialize_conversations(self) -> Iterator[Tuple[str, Conversation]]:
         for cache in self.cache_manager.get_all():
             session = cache.conversation_model.session
-            yield session, Conversation(self.config, cache)
+            yield session.id, Conversation(self.config, self.cache_manager, cache)
 
     def initialize_guilds(self) -> Iterator[Object]:
         for guild in self.config.server_guilds:
@@ -112,15 +112,12 @@ class DiscordBot(discord.Client):
         @self._command(
             name="대화",
             description="인공지능과 대화",
-            guilds=self._guilds
-        )
+            guilds=self._guilds)
         @app_commands.describe(
-            message="메시지"
-        )
+            message="메시지")
         async def _send_message(
                 interaction: discord.Interaction,
-                message: str
-        ) -> None:
+                message: str) -> None:
             conversation = self.get_conversation(interaction)
             info("[Command] Receiving message...")
 
@@ -128,8 +125,8 @@ class DiscordBot(discord.Client):
             await interaction.response.defer()
             answer = await conversation.predict_answer(message)
 
-            user_name = conversation.cache.get_sender_name('user')
-            ai_name = conversation.cache.get_sender_name('ai')
+            user_name = conversation.user_name
+            ai_name = conversation.ai_name
             result = f"**{user_name}**: {message}\n**{ai_name}**: {answer}"
 
             await interaction.followup.send(result)
@@ -139,62 +136,53 @@ class DiscordBot(discord.Client):
         @self._command(
             name="기록",
             description="대화 마지막에 이어서 문장을 삽입",
-            guilds=self._guilds
-        )
+            guilds=self._guilds)
         @app_commands.describe(
-            prompt="프롬프트"
-        )
+            prompt="프롬프트")
         async def _record_prompt(
                 interaction: discord.Interaction,
-                prompt: str
-        ) -> None:
+                prompt: str) -> None:
             conversation = self.get_conversation(interaction)
             info("[Command] Recording message...")
 
-            conversation.record_history(f"\n{prompt}\n\n")
+            conversation.record_prompt(prompt)
             # noinspection PyUnresolvedReferences
             await interaction.response.send_message(f"[프롬프트가 기록되었습니다]\n{prompt}")
 
         @self._command(
             name="바꾸기",
             description="모든 대화에서 특정 단어를 치환",
-            guilds=self._guilds
-        )
+            guilds=self._guilds)
         @app_commands.describe(
             before="기존 단어",
-            after="새 단어"
-        )
+            after="새 단어")
         async def _replace_prompt_text(
                 interaction: discord.Interaction,
                 before: str,
-                after: str
-        ) -> None:
+                after: str) -> None:
             conversation = self.get_conversation(interaction)
             info("[Command] Replacing words...")
 
-            conversation.replace_history_text(before, after)
+            conversation.replace_text(before, after)
             # noinspection PyUnresolvedReferences
             await interaction.response.send_message(f"[단어를 치환했습니다]\n{before} -> {after}")
 
         @self._command(
             name="이름",
             description="이름 변경",
-            guilds=self._guilds
-        )
+            guilds=self._guilds)
         @app_commands.describe(
             user_name="당신 이름",
-            ai_name="상대 이름"
-        )
+            ai_name="상대 이름")
         async def _replace_names(
                 interaction: discord.Interaction,
                 user_name: str,
-                ai_name: str
-        ) -> None:
+                ai_name: str) -> None:
             conversation = self.get_conversation(interaction)
             info("[Command] Renaming...")
 
-            previous_user = conversation.cache.get_sender_name('user')
-            previous_ai = conversation.cache.get_sender_name('ai')
+            previous_user = conversation.user_name
+            previous_ai = conversation.ai_name
             conversation.replace_names(user_name, ai_name)
 
             message = f"""[이름이 변경되었습니다]
@@ -206,16 +194,14 @@ class DiscordBot(discord.Client):
         @self._command(
             name="스왑",
             description="이름 스왑",
-            guilds=self._guilds
-        )
+            guilds=self._guilds)
         async def _swap_names(interaction: discord.Interaction) -> None:
             conversation = self.get_conversation(interaction)
             info("[Command] Swapping...")
 
-            previous_user = conversation.cache.get_sender_name('user')
-            previous_ai = conversation.cache.get_sender_name('ai')
-            conversation.replace_names("TEMP", previous_user)
-            conversation.replace_names(previous_ai, previous_user)
+            previous_user = conversation.user_name
+            previous_ai = conversation.ai_name
+            conversation.swap_names()
 
             message = f"""[이름이 변경되었습니다]
         - 당신: {previous_user} -> {previous_ai}
@@ -226,21 +212,19 @@ class DiscordBot(discord.Client):
         @self._command(
             name="정리",
             description="대화 내용 비우기",
-            guilds=self._guilds
-        )
+            guilds=self._guilds)
         async def _reset_prompt(interaction: discord.Interaction) -> None:
             conversation = self.get_conversation(interaction)
             info("[Command] Clearing conversation...")
 
-            conversation.erase_history()
+            conversation.erase_messages()
             # noinspection PyUnresolvedReferences
             await interaction.response.send_message("[대화 내용이 비워졌습니다]")
 
         @self._command(
             name="초기화",
             description="설정 초기화",
-            guilds=self._guilds
-        )
+            guilds=self._guilds)
         async def _reset_config(interaction: discord.Interaction) -> None:
             info("[Command] Resetting self.config...")
 
@@ -251,8 +235,7 @@ class DiscordBot(discord.Client):
         # @self._command(
         #     name="설정",
         #     description="설정 변경 (아직 창의력 빼고 작동 안함)",
-        #     guilds=self._guilds
-        # )
+        #     guilds=self._guilds)
         # @app_commands.describe(
         #     creativity="창의력",
         #     intelligence="지능",
@@ -262,8 +245,7 @@ class DiscordBot(discord.Client):
         #     age="나이",
         #     relationship="관계",
         #     title="호칭",
-        #     extra="추가 설정"
-        # )
+        #     extra="추가 설정")
         # @app_commands.choices(
         #     creativity=conv.creativities,
         #     intelligence=conv.intelligences,
@@ -271,8 +253,7 @@ class DiscordBot(discord.Client):
         #     mood=conv.moods,
         #     reputation=conv.reputations,
         #     age=conv.ages,
-        #     relationship=conv.relationships
-        # )
+        #     relationship=conv.relationships)
         # async def _config(
         #         interaction: discord.Interaction,
         #         creativity: int = None,
@@ -283,8 +264,7 @@ class DiscordBot(discord.Client):
         #         age: int = None,
         #         relationship: int = None,
         #         title: str = None,
-        #         extra: str = None
-        # ) -> None:
+        #         extra: str = None) -> None:
         #     conversation = self.get_conversation(interaction)
         #     info("[Command] Changing self.config...")
         #
