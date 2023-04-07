@@ -6,7 +6,6 @@ from colorama import Fore, Style
 
 from scripts.bot import DiscordBot
 from scripts.config import AppConfig
-from scripts.cache_manager import CacheManager
 
 logging.basicConfig(level=logging.INFO)
 
@@ -30,13 +29,7 @@ async def main(app_config: AppConfig) -> None:
 if __name__ == '__main__':
     try:
         config = AppConfig(CONFIG_PATH)
-
-        cache_manager = CacheManager(config)
-        cache = cache_manager.get('0')
-
-        print(cache.get_prompt_history())
-
-        # asyncio.run(main(config))
+        asyncio.run(main(config))
     except KeyboardInterrupt:
         warning(
             "[System] Keyboard Interrupted.\n"
