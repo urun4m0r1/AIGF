@@ -1,14 +1,9 @@
-from typing import Optional, Iterator, Iterable, Any
+from typing import Optional, Iterator, Iterable
 
 from data import prompt, conversation
 from data.conversation import Trait as UserTrait, Message
 from data.prompt import Trait, Choice
-
-
-def trim(elements: Iterable[Any]) -> Iterator[Any]:
-    for element in elements:
-        if element:
-            yield element
+from utils.iteration import trim
 
 
 class History:
