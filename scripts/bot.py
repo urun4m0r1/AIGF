@@ -93,7 +93,8 @@ class DiscordBot(discord.Client):
         @self.event
         async def on_ready() -> None:
             info("[Event] Changing presence to online...")
-            await self.change_presence(status=discord.Status.online, activity=None)
+            game = discord.Game("/도움말")
+            await self.change_presence(status=discord.Status.online, activity=game)
 
             info("[Event] Syncing server commands...")
             for guild in self._guilds:
