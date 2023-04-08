@@ -1,162 +1,230 @@
+import re
+from datetime import datetime
+from typing import Optional, Tuple, List
+
 import openai
-from discord import app_commands
 
-from settings.config import AppConfig
-from utils import file_io
+from data.conversation import Message
+from data.history import History
+from scripts.cache_manager import CacheManager
+from scripts.config import AppConfig
+
+TEMPERATURE_MAP = {
+    "nothing": 0.8,
+    "very-low": 0.4,
+    "low": 0.6,
+    "normal": 0.8,
+    "high": 1.0,
+    "very-high": 1.2,
+}
 
 
-class OpenAIConversation:
-    def __init__(self, _config: AppConfig):
-        self._config = _config
-        self._cache = _config.cache
+class Conversation:
+    def __init__(self, config: AppConfig, cache_manager: CacheManager, cache: History) -> None:
+        self.config = config
+        self.cache_manager = cache_manager
+        self.cache = cache
 
-        openai.organization = self._config.organization_id
-        openai.api_key = self._config.api_key
+        openai.organization = config.open_ai_organization_id
+        openai.api_key = config.open_ai_api_key
 
-        self._full_prompt = self._config.prompt_history
+        self.scroll_amount = cache.settings.scrollAmount
+        self.engine_name = cache.settings.engineName
+        self.max_tokens = cache.settings.maxTokens
+        self.top_p = cache.settings.topP
+        self.frequency_penalty = cache.settings.frequencyPenalty
+        self.presence_penalty = cache.settings.presencePenalty
+
+    def _save_cache(self) -> None:
+        self.cache_manager.save_cache(self.cache)
+
+    @property
+    def user_name(self) -> str:
+        return self.cache.get_sender_name('user')
+
+    @property
+    def ai_name(self) -> str:
+        return self.cache.get_sender_name('ai')
+
+    @user_name.setter
+    def user_name(self, value: str) -> None:
+        self.cache.participants[0].name = value
+        self._save_cache()
+
+    @ai_name.setter
+    def ai_name(self, value: str) -> None:
+        self.cache.participants[1].name = value
+        self._save_cache()
+
+    @property
+    def prompt(self) -> str:
+        return self.cache.get_prompt_history()
+
+    @property
+    def temperature(self) -> float:
+        for trait in self.cache.settings.traits:
+            if trait.category == 'creativity':
+                return TEMPERATURE_MAP[trait.style]
+
+        return 0
 
     async def _predict(self) -> str:
-        response = await openai.Completion.acreate(
-            engine=self._config.engine_name,
-            prompt=self._full_prompt,
-            temperature=self._get_temperature(),
-            max_tokens=self._config.max_tokens,  # TODO: dynamic_max_tokens 적용
-            top_p=self._config.top_p,
-            frequency_penalty=self._config.frequency_penalty,
-            presence_penalty=self._config.presence_penalty,
-            stop=[f'{self._cache.user_name}:', f'{self._cache.ai_name}:'],
-        )
+        try:
+            response = await openai.Completion.acreate(
+                engine=self.engine_name,
+                prompt=self.prompt,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                frequency_penalty=self.frequency_penalty,
+                presence_penalty=self.presence_penalty,
+                stop=[f'{self.user_name}:', f'{self.ai_name}:'],
+            )
+        except openai.error.InvalidRequestError as e:
+            if e.user_message.startswith("This model's maximum context length is"):
+                self._scroll_history()
+                return await self._predict()
+
+            raise e
 
         return response.choices[0].text.strip()
 
-    def _get_temperature(self) -> float:
-        return self._cache.creativity / 4
+    def _scroll_history(self) -> None:
+        print('[Conversation] Scrolling history...')
+        self.cache.messages = self.cache.messages[self.scroll_amount:]
+        self._save_cache()
 
-    def _save_history(self):
-        file_io.save_txt(self._config.prompt_history_path, self._full_prompt)
+    @staticmethod
+    def _parse_tokens_from_error(text: str) -> Tuple[int, int, int, int]:
+        """This model's maximum context length is 4097 tokens, however you requested 10000 tokens (8976 in your prompt
+        ; 1024 for the completion). Please reduce your prompt
+        ; or completion length."""
 
-    async def predict_answer(self, message: str) -> str:
-        self.record_prompt(f"{self._cache.user_name}: {message}\n{self._cache.ai_name}:")
+        # extract max_tokens, current_tokens, prompt_tokens, and completion_tokens using regex
+        max_tokens = int(re.search(r'maximum context length is (\d+)', text).group(1))
+        current_tokens = int(re.search(r'requested (\d+) tokens', text).group(1))
+        prompt_tokens = int(re.search(r'\((\d+) in your prompt', text).group(1))
+        completion_tokens = int(re.search(r'; (\d+) for the completion', text).group(1))
 
-        try:
-            answer = await self._predict()
-            self.record_prompt(f" {answer}\n")
-            return answer
-        except openai.error.InvalidRequestError as e:
-            print(e)
-            self.reset_prompt()
-            return "미안해요. 나의 기억 한계에 도달했네요... 우리의 추억은 여기까지인가봐요..."
-        except Exception as e:
-            print(e)
-            return "미안해요. 뭔가 잘못됐어요..."
+        return max_tokens, current_tokens, prompt_tokens, completion_tokens
 
-    def record_prompt(self, prompt: str):
-        self._full_prompt += prompt  # TODO: rolling_prompt_record 적용
-        self._save_history()
+    def format_prediction(self, question: Message, answer: Message) -> str:
+        return f"**{self.user_name}**: {question.text}\n**{self.ai_name}**: {answer.text}"
 
-    def replace_prompt_text(self, old_text: str, new_text: str):
-        self._full_prompt = self._full_prompt.replace(old_text, new_text)
-        self._save_history()
+    async def send(self, message: str) -> Tuple[Message, Message]:
+        question = Message(sender='user', text=message, timestamp=datetime.now().isoformat())
+        answer = Message(sender='ai', text='', timestamp='')
 
-    def replace_names(self, user_name: str, ai_name: str):
-        self.replace_prompt_text(self._cache.user_name, user_name)
-        self.replace_prompt_text(self._cache.ai_name, ai_name)
-        self._cache.user_name = user_name
-        self._cache.ai_name = ai_name
-        self._cache.save()
+        self.cache.messages.append(question)
+        self.cache.messages.append(answer)
 
-    def reset_prompt(self):
-        self._full_prompt = self._cache.get_initial_prompt()
-        self._save_history()
+        answer.text = await self._predict()
+        answer.timestamp = datetime.now().isoformat()
+        self._save_cache()
 
-    def erase_prompt(self):
-        self._full_prompt = ""
-        self._save_history()
+        return question, answer
 
-    def change_creativity(self, creativity: int):
-        self._cache.creativity = creativity
-        self._cache.save()
+    async def retry(self) -> Optional[Tuple[Message, Message]]:
+        if len(self.cache.messages) < 2:
+            return None
 
-    # TODO: 기능 구현
-    def change_intelligence(self, intelligence: int):
-        pass
+        last_message = self.cache.messages[-1]
 
-    def change_personality(self, personality: int):
-        pass
+        if last_message.sender != 'ai':
+            return None
 
-    def change_mood(self, mood: int):
-        pass
+        last_message.text = ''
+        last_message.text = await self._predict()
+        last_message.timestamp = datetime.now().isoformat()
 
-    def change_reputation(self, reputation: int):
-        pass
+        self._save_cache()
 
-    def change_age(self, age: int):
-        pass
+        return self.cache.messages[-2], last_message
 
-    def change_relationship(self, relationship: int):
-        pass
+    def record(self, message: str) -> None:
+        prompt = Message(sender='text', text=message, timestamp=datetime.now().isoformat())
 
-    def change_title(self, title: str):
-        pass
+        self.cache.messages.append(prompt)
+        self._save_cache()
 
-    def change_extra(self, extra: str):
-        pass
+    def replace(self, before: str, after: str) -> None:
+        for message in self.cache.messages:
+            message.text = message.text.replace(before, after)
 
+        self._save_cache()
 
-creativities = [
-    app_commands.Choice(name="고지식함", value=0),
-    app_commands.Choice(name="단순함", value=1),
-    app_commands.Choice(name="폄범함", value=2),
-    app_commands.Choice(name="창의적임", value=3),
-    app_commands.Choice(name="나사풀린", value=4),
-]
+    def rename(self, user: str, ai: str) -> None:
+        for message in self.cache.messages:
+            message.text = message.text.replace(self.user_name, user)
+            message.text = message.text.replace(self.ai_name, ai)
 
-intelligences = [
-    app_commands.Choice(name="멍청함", value=0),
-    app_commands.Choice(name="평범함", value=1),
-    app_commands.Choice(name="지적임", value=2),
-]
+        self.cache.participants[0].name = user
+        self.cache.participants[1].name = ai
 
-persornalities = [
-    app_commands.Choice(name="평범함", value=0),
-    app_commands.Choice(name="츤데레", value=1),
-    app_commands.Choice(name="얀데레", value=2),
-    app_commands.Choice(name="쿨데레", value=3),
-    app_commands.Choice(name="메가데레", value=4),
-]
+        self._save_cache()
 
-moods = [
-    app_commands.Choice(name="평범함", value=0),
-    app_commands.Choice(name="기쁨", value=1),
-    app_commands.Choice(name="슬픔", value=2),
-    app_commands.Choice(name="화남", value=3),
-    app_commands.Choice(name="놀람", value=4),
-    app_commands.Choice(name="무표정", value=5),
-]
+    def swap(self) -> None:
+        prev_user = self.user_name
+        prev_ai = self.ai_name
 
-reputations = [
-    app_commands.Choice(name="평범함", value=0),
-    app_commands.Choice(name="영웅", value=1),
-    app_commands.Choice(name="불한당", value=2),
-]
+        for message in self.cache.messages:
+            message.text = message.text.replace(prev_user, '{temp}')
+            message.text = message.text.replace(prev_ai, prev_user)
+            message.text = message.text.replace('{temp}', prev_ai)
 
-ages = [
-    app_commands.Choice(name="유아", value=0),
-    app_commands.Choice(name="청소년", value=1),
-    app_commands.Choice(name="사춘기", value=2),
-    app_commands.Choice(name="대학생", value=3),
-    app_commands.Choice(name="성인", value=4),
-]
+        self.cache.participants[0].name = prev_ai
+        self.cache.participants[1].name = prev_user
 
-relationships = [
-    app_commands.Choice(name="평범함", value=0),
-    app_commands.Choice(name="소꿉친구", value=1),
-    app_commands.Choice(name="여동생", value=2),
-    app_commands.Choice(name="썸녀", value=3),
-    app_commands.Choice(name="연인", value=4),
-    app_commands.Choice(name="후배", value=5),
-    app_commands.Choice(name="선배", value=6),
-    app_commands.Choice(name="엄마", value=7),
-    app_commands.Choice(name="딸", value=8),
-    app_commands.Choice(name="선생님", value=9),
-]
+        self._save_cache()
+
+    def undo(self) -> str:
+        if len(self.cache.messages) == 0:
+            return ''
+
+        last_message = self.cache.messages[-1]
+
+        if last_message.sender == 'user':
+            return ''
+
+        elif last_message.sender == 'text':
+            self.cache.messages = self.cache.messages[:-1]
+            self._save_cache()
+            return f'~~({last_message.text})~~'
+
+        elif last_message.sender == 'ai':
+            last_user_message = self.cache.messages[-2]
+            self.cache.messages = self.cache.messages[:-2]
+            self._save_cache()
+            return f"~~{self.format_prediction(last_user_message, last_message)}~~"
+
+    def clear(self) -> None:
+        self.cache.messages.clear()
+        self._save_cache()
+
+    def reset(self) -> None:
+        session_id = self.cache.session.id
+        self.cache = self.cache_manager.recreate(session_id)
+
+    def change_creativity(self, creativity: str) -> None:
+        for trait in self.cache.settings.traits:
+            if trait.category == 'creativity':
+                trait.style = creativity
+                break
+
+        self._save_cache()
+
+    def change_characteristic(self, characteristic: str) -> None:
+        for trait in self.cache.settings.traits:
+            if trait.category == 'characteristic':
+                trait.style = characteristic
+                break
+
+        self._save_cache()
+
+    def change_relationship(self, relationship: str) -> None:
+        for trait in self.cache.settings.traits:
+            if trait.category == 'relationship':
+                trait.style = relationship
+                break
+
+        self._save_cache()

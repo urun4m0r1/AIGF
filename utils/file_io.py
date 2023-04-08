@@ -1,27 +1,55 @@
 import json
+from pathlib import Path
+from typing import Dict, Union
+
+import yaml
+
+PathLike = Union[str, Path]
 
 
-def load_json(path: str) -> dict:
+def remove_file(path: PathLike) -> None:
+    Path(path).unlink(missing_ok=True)
+
+
+def load_yaml(path: PathLike) -> Dict:
     try:
-        with open(path, 'r', encoding='utf-8') as f:
+        with Path(path).open(encoding='utf-8') as f:
+            return yaml.safe_load(f)
+    except FileNotFoundError:
+        return {}
+
+
+def save_yaml(path: PathLike, data: Dict) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+
+    with Path(path).open('w', encoding='utf-8') as f:
+        yaml.safe_dump(data, f, allow_unicode=True, default_flow_style=False)
+
+
+def load_json(path: PathLike) -> Dict:
+    try:
+        with Path(path).open(encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
         return {}
 
 
-def save_json(path: str, data: dict):
-    with open(path, 'w', encoding='utf-8') as f:
+def save_json(path: PathLike, data: Dict) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+
+    with Path(path).open('w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=4)
 
 
-def load_txt(path: str) -> str:
-    try:
-        with open(path, 'r', encoding='utf-8') as f:
-            return f.read()
-    except FileNotFoundError:
-        return ''
+def load_txt_strip(path: PathLike) -> str:
+    return load_txt(path).strip()
 
 
-def save_txt(path: str, text: str):
-    with open(path, 'w', encoding='utf-8') as f:
-        f.write(text)
+def load_txt(path: PathLike) -> str:
+    return Path(path).read_text(encoding='utf-8', errors='ignore')
+
+
+def save_txt(path: PathLike, text: str) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+
+    Path(path).write_text(text, encoding='utf-8')

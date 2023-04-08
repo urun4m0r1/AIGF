@@ -1,0 +1,42 @@
+session:
+  id: '0'
+  language: ko-KR
+  timezone: Seoul
+  creationTime: '2023-04-03T12:00:00Z'
+settings:
+  participants:
+    - role: user
+      name: '나'
+    - role: ai
+      name: '상대'
+  traits:
+    - category: creativity
+      style: nothing
+    - category: characteristic
+      style: nothing
+    - category: relationship
+      style: nothing
+  userPrompt: ''
+  sendersSwapped: false
+  scrollAmount: 6
+  engineName: 'text-davinci-003'
+  maxTokens: 512
+  topP: 1
+  frequencyPenalty: 0.0
+  presencePenalty: 0.6
+messages:
+  - sender: user
+    text: 'Hello!'
+    timestamp: '2023-04-03T12:01:00Z'
+  - sender: ai
+    text: 'Hi, I''m AI.'
+    timestamp: '2023-04-03T12:01:05Z'
+  - sender: user
+    text: 'I''m hungry.'
+    timestamp: '2023-04-03T12:02:00Z'
+  - sender: ai
+    text: 'How about pizza?'
+    timestamp: '2023-04-03T12:02:10Z'
+  - sender: text
+    text: 'They went to the pizza shop.'
+    timestamp: '2023-04-03T12:03:00Z'

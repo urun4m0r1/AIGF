@@ -1,21 +1,18 @@
-from typing import Optional
+from typing import Optional, Type, Union
 
-import discord
+Number = Type[Union[int, float]]
 
 
-def parse_guilds(items: list) -> list:
-    return [discord.Object(id=int(item[1])) for item in items]
+def try_parse_number(text: Optional[str], number_type: Number) -> Optional[Number]:
+    """Attempt to parse a number from a string, returning None if not possible."""
+    return number_type(text) if text is not None and text.isnumeric() else None
 
 
 def try_parse_int(text: Optional[str]) -> Optional[int]:
-    try:
-        return int(text)
-    except (ValueError, TypeError):
-        return None
+    """Attempt to parse an integer from a string, returning None if not possible."""
+    return try_parse_number(text, int)
 
 
 def try_parse_float(text: Optional[str]) -> Optional[float]:
-    try:
-        return float(text)
-    except (ValueError, TypeError):
-        return None
+    """Attempt to parse a float from a string, returning None if not possible."""
+    return try_parse_number(text, float)
