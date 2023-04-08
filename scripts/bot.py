@@ -146,6 +146,7 @@ class DiscordBot(discord.Client):
         categories = list(get_categories())
         choices = {category: get_choices(category) for category in categories}
 
+        decorator_help = self._command(name=HELP, description=HELP_DESC, guilds=self._guilds)
         decorator_send = self._command(name=SEND, description=SEND_DESC, guilds=self._guilds)
         decorator_retry = self._command(name=RETRY, description=RETRY_DESC, guilds=self._guilds)
         decorator_record = self._command(name=RECORD, description=RECORD_DESC, guilds=self._guilds)
@@ -168,6 +169,12 @@ class DiscordBot(discord.Client):
         )
 
         decorator_config_choices = app_commands.choices(**choices)
+
+        @decorator_help
+        async def _help(interaction: Interaction) -> None:
+            log_callback(interaction)
+
+            await send(interaction, HELP_CONTENT)
 
         @decorator_send
         @decorator_send_describe
