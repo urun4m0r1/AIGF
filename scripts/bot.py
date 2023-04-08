@@ -161,7 +161,11 @@ class DiscordBot(discord.Client):
         decorator_record_describe = app_commands.describe(prompt=RECORD_ARGS_1)
         decorator_replace_describe = app_commands.describe(before=REPLACE_ARGS_1, after=REPLACE_ARGS_2)
         decorator_rename_describe = app_commands.describe(user=RENAME_ARGS_1, ai=RENAME_ARGS_2)
-        decorator_config_describe = app_commands.describe(characteristic=CONFIG_ARGS_1, relationship=CONFIG_ARGS_2)
+        decorator_config_describe = app_commands.describe(
+            creativity=CONFIG_ARGS_1,
+            characteristic=CONFIG_ARGS_2,
+            relationship=CONFIG_ARGS_3
+        )
 
         decorator_config_choices = app_commands.choices(**choices)
 
@@ -201,7 +205,7 @@ class DiscordBot(discord.Client):
 
             conversation = self.get_conversation(interaction)
             conversation.record(prompt)
-            result = f"[프롬프트를 기록했습니다]\n{prompt}"
+            result = f"[프롬프트를 기록했습니다]\n({prompt})"
 
             await send(interaction, result)
 
@@ -250,8 +254,11 @@ class DiscordBot(discord.Client):
             log_callback(interaction)
 
             conversation = self.get_conversation(interaction)
-            success = conversation.undo()
-            result = "[취소할 내용이 없습니다]" if not success else "[마지막 명령을 취소했습니다]"
+            result = conversation.undo()
+            if result:
+                result = f"[마지막 대화를 취소했습니다]\n{result}"
+            else:
+                result = "[취소할 내용이 없습니다]"
 
             await send(interaction, result)
 

@@ -1,4 +1,4 @@
-from typing import Optional, Iterator, Iterable
+from typing import Optional, Iterator, Iterable, List
 
 from data import prompt, conversation
 from data.conversation import Trait as UserTrait, Message
@@ -17,13 +17,53 @@ class History:
         self.prompt_model = prompt_model
         self.conversation_model = conversation_model
 
-        self.traits = self.prompt_model.traits
+    @property
+    def traits(self) -> List[Trait]:
+        return self.prompt_model.traits
 
-        self.session = self.conversation_model.session
-        self.settings = self.conversation_model.settings
-        self.messages = self.conversation_model.messages
-        self.participants = self.settings.participants
-        self.user_traits = self.settings.traits
+    @traits.setter
+    def traits(self, traits: List[Trait]) -> None:
+        self.prompt_model.traits = traits
+
+    @property
+    def session(self) -> conversation.Session:
+        return self.conversation_model.session
+
+    @session.setter
+    def session(self, session: conversation.Session) -> None:
+        self.conversation_model.session = session
+
+    @property
+    def settings(self) -> conversation.Settings:
+        return self.conversation_model.settings
+
+    @settings.setter
+    def settings(self, settings: conversation.Settings) -> None:
+        self.conversation_model.settings = settings
+
+    @property
+    def messages(self) -> List[Message]:
+        return self.conversation_model.messages
+
+    @messages.setter
+    def messages(self, messages: List[Message]) -> None:
+        self.conversation_model.messages = messages
+
+    @property
+    def participants(self) -> List[conversation.Participant]:
+        return self.settings.participants
+
+    @participants.setter
+    def participants(self, participants: List[conversation.Participant]) -> None:
+        self.settings.participants = participants
+
+    @property
+    def user_traits(self) -> List[UserTrait]:
+        return self.settings.traits
+
+    @user_traits.setter
+    def user_traits(self, user_traits: List[UserTrait]) -> None:
+        self.settings.traits = user_traits
 
     def get_prompt_history(self) -> str:
         full_prompt = self.get_full_prompt()
@@ -73,7 +113,7 @@ class History:
         if not choice:
             return ''
 
-        return '\n'.join(choice.prompts)
+        return '\n'.join(choice.prompts) if choice.prompts else ''
 
     def get_trait(self, category: str) -> Optional[Trait]:
         return next((trait for trait in self.traits if trait.category == category), None)

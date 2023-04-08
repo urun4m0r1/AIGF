@@ -22,7 +22,7 @@ RENAME_ARGS_2 = '상대 이름'
 SWAP = '스왑'
 SWAP_DESC = '이름 스왑'
 
-UNDO = '되돌리기'
+UNDO = '취소'
 UNDO_DESC = '마지막 대화 취소'
 
 CLEAR = '정리'
@@ -33,8 +33,9 @@ RESET_DESC = '설정 초기화'
 
 CONFIG = '설정'
 CONFIG_DESC = '설정 변경'
-CONFIG_ARGS_1 = '성격'
-CONFIG_ARGS_2 = '관계'
+CONFIG_ARGS_1 = '창의력'
+CONFIG_ARGS_2 = '성격'
+CONFIG_ARGS_3 = '관계'
 
 창의력 = {
     '기본값',

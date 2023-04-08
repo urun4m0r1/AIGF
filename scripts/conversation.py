@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 import openai
 
@@ -10,11 +10,12 @@ from scripts.cache_manager import CacheManager
 from scripts.config import AppConfig
 
 TEMPERATURE_MAP = {
-    "very-low": 0.1,
-    "low": 0.3,
-    "normal": 0.5,
-    "high": 0.7,
-    "very-high": 0.9,
+    "nothing": 0.8,
+    "very-low": 0.4,
+    "low": 0.6,
+    "normal": 0.8,
+    "high": 1.0,
+    "very-high": 1.2,
 }
 
 
@@ -57,9 +58,7 @@ class Conversation:
 
     @property
     def prompt(self) -> str:
-        prompt = self.cache.get_prompt_history()
-        print(prompt)
-        return prompt
+        return self.cache.get_prompt_history()
 
     @property
     def temperature(self) -> float:
@@ -67,7 +66,7 @@ class Conversation:
             if trait.category == 'creativity':
                 return TEMPERATURE_MAP[trait.style]
 
-        return 0.5
+        return 0
 
     async def _predict(self) -> str:
         try:
@@ -178,22 +177,25 @@ class Conversation:
 
         self._save_cache()
 
-    def undo(self) -> bool:
+    def undo(self) -> str:
         if len(self.cache.messages) == 0:
-            return False
+            return ''
 
         last_message = self.cache.messages[-1]
 
         if last_message.sender == 'user':
-            return False
+            return ''
 
         elif last_message.sender == 'text':
             self.cache.messages = self.cache.messages[:-1]
+            self._save_cache()
+            return f'~~({last_message.text})~~'
 
         elif last_message.sender == 'ai':
+            last_user_message = self.cache.messages[-2]
             self.cache.messages = self.cache.messages[:-2]
-
-        self._save_cache()
+            self._save_cache()
+            return f"~~{self.format_prediction(last_user_message, last_message)}~~"
 
     def clear(self) -> None:
         self.cache.messages.clear()
