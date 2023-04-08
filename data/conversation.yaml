@@ -6,9 +6,9 @@ session:
 settings:
   participants:
     - role: user
-      name: 'User'
+      name: '나'
     - role: ai
-      name: 'AI'
+      name: '상대'
   traits:
     - category: creativity
       style: nothing
