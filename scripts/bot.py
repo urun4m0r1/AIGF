@@ -230,8 +230,8 @@ class DiscordBot(discord.Client):
             previous_ai = conversation.ai_name
             conversation.rename(user, ai)
             result = f"""[이름이 변경되었습니다]
-        - 당신: {previous_user} -> {user}
-        - 상대: {previous_ai} -> {ai}"""
+- 당신: {previous_user} -> {user}
+- 상대: {previous_ai} -> {ai}"""
 
             await send(interaction, result)
 
@@ -244,8 +244,8 @@ class DiscordBot(discord.Client):
             previous_ai = conversation.ai_name
             conversation.swap()
             result = f"""[이름이 변경되었습니다]
-        - 당신: {previous_user} -> {previous_ai}
-        - 상대: {previous_ai} -> {previous_user}"""
+- 당신: {previous_user} -> {previous_ai}
+- 상대: {previous_ai} -> {previous_user}"""
 
             await send(interaction, result)
 

@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple
 
 import openai
 
@@ -13,7 +13,7 @@ TEMPERATURE_MAP = {
     "nothing": 0.8,
     "very-low": 0.4,
     "low": 0.6,
-    "normal": 0.8,
+    "medium": 0.8,
     "high": 1.0,
     "very-high": 1.2,
 }
