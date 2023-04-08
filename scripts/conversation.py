@@ -1,5 +1,6 @@
 import re
 from datetime import datetime
+from typing import Optional, Tuple
 
 import openai
 
@@ -8,17 +9,17 @@ from data.history import History
 from scripts.cache_manager import CacheManager
 from scripts.config import AppConfig
 
-CREATIVITY_MAP = {
-    0: 0.1,
-    1: 0.3,
-    2: 0.5,
-    3: 0.7,
-    4: 0.9,
+TEMPERATURE_MAP = {
+    "very-low": 0.1,
+    "low": 0.3,
+    "normal": 0.5,
+    "high": 0.7,
+    "very-high": 0.9,
 }
 
 
 class Conversation:
-    def __init__(self, config: AppConfig, cache_manager: CacheManager, cache: History):
+    def __init__(self, config: AppConfig, cache_manager: CacheManager, cache: History) -> None:
         self.config = config
         self.cache_manager = cache_manager
         self.cache = cache
@@ -33,34 +34,40 @@ class Conversation:
         self.frequency_penalty = cache.settings.frequencyPenalty
         self.presence_penalty = cache.settings.presencePenalty
 
-    def _save_cache(self):
+    def _save_cache(self) -> None:
         self.cache_manager.save_cache(self.cache)
 
     @property
     def user_name(self) -> str:
         return self.cache.get_sender_name('user')
 
-    @user_name.setter
-    def user_name(self, value: str):
-        self.cache.participants[0].name = value
-        self._save_cache()
-
     @property
     def ai_name(self) -> str:
         return self.cache.get_sender_name('ai')
 
+    @user_name.setter
+    def user_name(self, value: str) -> None:
+        self.cache.participants[0].name = value
+        self._save_cache()
+
     @ai_name.setter
-    def ai_name(self, value: str):
+    def ai_name(self, value: str) -> None:
         self.cache.participants[1].name = value
         self._save_cache()
 
     @property
     def prompt(self) -> str:
-        return self.cache.get_prompt_history()
+        prompt = self.cache.get_prompt_history()
+        print(prompt)
+        return prompt
 
     @property
     def temperature(self) -> float:
-        return CREATIVITY_MAP[self.cache.settings.creativityLevel]
+        for trait in self.cache.settings.traits:
+            if trait.category == 'creativity':
+                return TEMPERATURE_MAP[trait.style]
+
+        return 0.5
 
     async def _predict(self) -> str:
         try:
@@ -83,13 +90,13 @@ class Conversation:
 
         return response.choices[0].text.strip()
 
-    def _scroll_history(self):
+    def _scroll_history(self) -> None:
         print('[Conversation] Scrolling history...')
         self.cache.messages = self.cache.messages[self.scroll_amount:]
         self._save_cache()
 
     @staticmethod
-    def _parse_tokens_from_error(text: str):
+    def _parse_tokens_from_error(text: str) -> Tuple[int, int, int, int]:
         """This model's maximum context length is 4097 tokens, however you requested 10000 tokens (8976 in your prompt
         ; 1024 for the completion). Please reduce your prompt
         ; or completion length."""
@@ -102,10 +109,10 @@ class Conversation:
 
         return max_tokens, current_tokens, prompt_tokens, completion_tokens
 
-    def format_message(self, question: Message, answer: Message) -> str:
+    def format_prediction(self, question: Message, answer: Message) -> str:
         return f"**{self.user_name}**: {question.text}\n**{self.ai_name}**: {answer.text}"
 
-    async def predict_answer(self, message: str) -> (Message, Message):
+    async def send(self, message: str) -> Tuple[Message, Message]:
         question = Message(sender='user', text=message, timestamp=datetime.now().isoformat())
         answer = Message(sender='ai', text='', timestamp='')
 
@@ -118,43 +125,67 @@ class Conversation:
 
         return question, answer
 
-    async def re_predict_last(self) -> (Message, Message):
-        if len(self.cache.messages) == 0:
-            return ''
+    async def retry(self) -> Optional[Tuple[Message, Message]]:
+        if len(self.cache.messages) < 2:
+            return None
 
-        if self.cache.messages[-1].sender in ['user', 'text']:
-            return ''
+        last_message = self.cache.messages[-1]
 
-        self.cache.messages = self.cache.messages[:-1]
+        if last_message.sender != 'ai':
+            return None
 
-        answer = Message(sender='ai', text='', timestamp='')
+        last_message.text = ''
+        last_message.text = await self._predict()
+        last_message.timestamp = datetime.now().isoformat()
 
-        self.cache.messages.append(answer)
-
-        answer.text = await self._predict()
-        answer.timestamp = datetime.now().isoformat()
         self._save_cache()
 
-        return self.cache.messages[-2], answer
+        return self.cache.messages[-2], last_message
 
-    def record_prompt(self, message: str):
+    def record(self, message: str) -> None:
         prompt = Message(sender='text', text=message, timestamp=datetime.now().isoformat())
 
         self.cache.messages.append(prompt)
         self._save_cache()
 
-    def erase_messages(self):
-        self.cache.messages.clear()
+    def replace(self, before: str, after: str) -> None:
+        for message in self.cache.messages:
+            message.text = message.text.replace(before, after)
+
         self._save_cache()
 
-    def undo(self):
+    def rename(self, user: str, ai: str) -> None:
+        for message in self.cache.messages:
+            message.text = message.text.replace(self.user_name, user)
+            message.text = message.text.replace(self.ai_name, ai)
+
+        self.cache.participants[0].name = user
+        self.cache.participants[1].name = ai
+
+        self._save_cache()
+
+    def swap(self) -> None:
+        prev_user = self.user_name
+        prev_ai = self.ai_name
+
+        for message in self.cache.messages:
+            message.text = message.text.replace(prev_user, '{temp}')
+            message.text = message.text.replace(prev_ai, prev_user)
+            message.text = message.text.replace('{temp}', prev_ai)
+
+        self.cache.participants[0].name = prev_ai
+        self.cache.participants[1].name = prev_user
+
+        self._save_cache()
+
+    def undo(self) -> bool:
         if len(self.cache.messages) == 0:
-            return
+            return False
 
         last_message = self.cache.messages[-1]
 
         if last_message.sender == 'user':
-            return
+            return False
 
         elif last_message.sender == 'text':
             self.cache.messages = self.cache.messages[:-1]
@@ -164,58 +195,34 @@ class Conversation:
 
         self._save_cache()
 
-    def replace_text(self, old_text: str, new_text: str):
-        for message in self.cache.messages:
-            message.text = message.text.replace(old_text, new_text)
+    def clear(self) -> None:
+        self.cache.messages.clear()
+        self._save_cache()
+
+    def reset(self) -> None:
+        session_id = self.cache.session.id
+        self.cache = self.cache_manager.recreate(session_id)
+
+    def change_creativity(self, creativity: str) -> None:
+        for trait in self.cache.settings.traits:
+            if trait.category == 'creativity':
+                trait.style = creativity
+                break
 
         self._save_cache()
 
-    def swap_names(self):
-        for message in self.cache.messages:
-            message.text = message.text.replace(self.user_name, '{temp}')
-            message.text = message.text.replace(self.ai_name, self.user_name)
-            message.text = message.text.replace('{temp}', self.ai_name)
-
-        self.user_name, self.ai_name = self.ai_name, self.user_name
+    def change_characteristic(self, characteristic: str) -> None:
+        for trait in self.cache.settings.traits:
+            if trait.category == 'characteristic':
+                trait.style = characteristic
+                break
 
         self._save_cache()
 
-    def replace_names(self, user_name: str, ai_name: str):
-        for message in self.cache.messages:
-            message.text = message.text.replace(self.user_name, user_name)
-            message.text = message.text.replace(self.ai_name, ai_name)
-
-        self.user_name = user_name
-        self.ai_name = ai_name
+    def change_relationship(self, relationship: str) -> None:
+        for trait in self.cache.settings.traits:
+            if trait.category == 'relationship':
+                trait.style = relationship
+                break
 
         self._save_cache()
-
-    def change_creativity(self, creativity_level: int):
-        self.cache.settings.creativityLevel = creativity_level
-
-        self._save_cache()
-
-    # TODO: 기능 구현
-    def change_intelligence(self, intelligence: int):
-        pass
-
-    def change_personality(self, personality: int):
-        pass
-
-    def change_mood(self, mood: int):
-        pass
-
-    def change_reputation(self, reputation: int):
-        pass
-
-    def change_age(self, age: int):
-        pass
-
-    def change_relationship(self, relationship: int):
-        pass
-
-    def change_title(self, title: str):
-        pass
-
-    def change_extra(self, extra: str):
-        pass

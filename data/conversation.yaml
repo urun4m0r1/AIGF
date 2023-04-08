@@ -7,16 +7,16 @@ settings:
   participants:
     - role: user
       name: 'User'
-      nickname: ''
     - role: ai
       name: 'AI'
   traits:
-    - category: intelligence
-      style: genius
+    - category: creativity
+      style: nothing
     - category: characteristic
-      style: tsundere
+      style: nothing
+    - category: relationship
+      style: nothing
   userPrompt: ''
-  creativityLevel: 3
   sendersSwapped: false
   scrollAmount: 6
   engineName: 'text-davinci-003'

@@ -19,6 +19,10 @@ class CacheManager:
 
         self.default_history = History(self._default_prompt, self._prompt_model, self._conversation_model)
 
+    def recreate(self, session_id: str) -> History:
+        self.remove_cache(session_id)
+        return self.create_cache(session_id)
+
     def get(self, session_id: str) -> History:
         cache = self.load_cache(session_id)
         if cache:
