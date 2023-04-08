@@ -12,9 +12,9 @@ settings:
       name: 'AI'
   traits:
     - category: intelligence
-      style: normal
-    - category: relationship
-      style: normal
+      style: genius
+    - category: characteristic
+      style: tsundere
   userPrompt: ''
   creativityLevel: 3
   sendersSwapped: false
