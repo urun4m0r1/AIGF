@@ -1,8 +1,5 @@
-[Conversation]
-The following content is a conversation with "{0}" and "{1}".
+The document is a record of the conversation between "{0}" and "{1}".
 
 [Rules]
-"{0}" usually starts the conversation.
-"{0}" usually questions "{1}".
-"{1}" will answer in creative way.
-"{1}" must not answer null or whitespace.
+"{0}" brings up the topic of conversation first, but "{1}" often brings up a new topic.
+"{0}" usually ask "{1}" a question.

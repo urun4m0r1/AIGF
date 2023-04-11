@@ -1,3 +1,4 @@
+import copy
 import re
 from datetime import datetime
 from typing import Optional, Tuple
@@ -10,12 +11,13 @@ from scripts.cache_manager import CacheManager
 from scripts.config import AppConfig
 
 TEMPERATURE_MAP = {
-    "nothing": 0.8,
-    "very-low": 0.4,
-    "low": 0.6,
-    "medium": 0.8,
-    "high": 1.0,
-    "very-high": 1.2,
+    "로봇": 0.0,
+    "단순함": 0.3,
+    "명확함": 0.5,
+    "보통": 0.7,
+    "융퉁성": 0.9,
+    "창의적": 1.3,
+    "헛소리": 1.5,
 }
 
 
@@ -153,6 +155,17 @@ class Conversation:
 
         self._save_cache()
 
+    def modify(self, message: str) -> Optional[Tuple[Message, Message]]:
+        if len(self.cache.messages) < 1:
+            return None
+
+        last_message = self.cache.messages[-1]
+        last_message_copy = copy.deepcopy(last_message)
+
+        last_message.text = message
+        self._save_cache()
+        return last_message_copy, last_message
+
     def rename(self, user: str, ai: str) -> None:
         for message in self.cache.messages:
             message.text = message.text.replace(self.user_name, user)
@@ -205,6 +218,12 @@ class Conversation:
         session_id = self.cache.session.id
         self.cache = self.cache_manager.recreate(session_id)
 
+    def print(self) -> str:
+        return self.cache.get_full_messages()
+
+    def debug(self) -> str:
+        return self.cache.get_prompt_history()
+
     def change_creativity(self, creativity: str) -> None:
         for trait in self.cache.settings.traits:
             if trait.category == 'creativity':
@@ -228,3 +247,4 @@ class Conversation:
                 break
 
         self._save_cache()
+

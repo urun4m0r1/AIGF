@@ -8,22 +8,22 @@ settings:
     - role: user
       name: '나'
     - role: ai
-      name: '상대'
+      name: '레콘'
   traits:
     - category: creativity
-      style: nothing
+      style: 보통
     - category: characteristic
-      style: nothing
+      style: 없음
     - category: relationship
-      style: nothing
+      style: 없음
   userPrompt: ''
   sendersSwapped: false
   scrollAmount: 6
   engineName: 'text-davinci-003'
-  maxTokens: 512
-  topP: 1
-  frequencyPenalty: 0.0
-  presencePenalty: 0.6
+  maxTokens: 150
+  topP: 1.0
+  frequencyPenalty: 1.0
+  presencePenalty: 1.0
 messages:
   - sender: user
     text: 'Hello!'

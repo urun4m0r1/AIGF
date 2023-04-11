@@ -152,21 +152,28 @@ class DiscordBot(discord.Client):
         decorator_retry = self._command(name=RETRY, description=RETRY_DESC, guilds=self._guilds)
         decorator_record = self._command(name=RECORD, description=RECORD_DESC, guilds=self._guilds)
         decorator_replace = self._command(name=REPLACE, description=REPLACE_DESC, guilds=self._guilds)
+        decorator_modify = self._command(name=MODIFY, description=MODIFY_DESC, guilds=self._guilds)
         decorator_rename = self._command(name=RENAME, description=RENAME_DESC, guilds=self._guilds)
         decorator_swap = self._command(name=SWAP, description=SWAP_DESC, guilds=self._guilds)
         decorator_undo = self._command(name=UNDO, description=UNDO_DESC, guilds=self._guilds)
         decorator_clear = self._command(name=CLEAR, description=CLEAR_DESC, guilds=self._guilds)
         decorator_reset = self._command(name=RESET, description=RESET_DESC, guilds=self._guilds)
+        decorator_print = self._command(name=PRINT, description=PRINT_DESC, guilds=self._guilds)
+        decorator_debug = self._command(name=DEBUG, description=DEBUG_DESC, guilds=self._guilds)
         decorator_config = self._command(name=CONFIG, description=CONFIG_DESC, guilds=self._guilds)
 
         decorator_send_describe = app_commands.describe(message=SEND_ARGS_1)
         decorator_record_describe = app_commands.describe(prompt=RECORD_ARGS_1)
         decorator_replace_describe = app_commands.describe(before=REPLACE_ARGS_1, after=REPLACE_ARGS_2)
+        decorator_modify_describe = app_commands.describe(message=MODIFY_ARGS_1)
         decorator_rename_describe = app_commands.describe(user=RENAME_ARGS_1, ai=RENAME_ARGS_2)
         decorator_config_describe = app_commands.describe(
-            creativity=CONFIG_ARGS_1,
-            characteristic=CONFIG_ARGS_2,
-            relationship=CONFIG_ARGS_3
+            reset=CONFIG_ARGS_1,
+            user=CONFIG_ARGS_2,
+            ai=CONFIG_ARGS_3,
+            creativity=CONFIG_ARGS_4,
+            characteristic=CONFIG_ARGS_5,
+            relationship=CONFIG_ARGS_6
         )
 
         decorator_config_choices = app_commands.choices(**choices)
@@ -225,6 +232,21 @@ class DiscordBot(discord.Client):
             conversation = self.get_conversation(interaction)
             conversation.replace(before, after)
             result = f"[단어를 치환했습니다]\n{before} -> {after}"
+
+            await send(interaction, result)
+
+        @decorator_modify
+        @decorator_modify_describe
+        async def _modify(interaction: Interaction, message: str) -> None:
+            log_callback(interaction)
+
+            conversation = self.get_conversation(interaction)
+            content = conversation.modify(message)
+            if content is None:
+                result = "[수정할 메시지가 없습니다]"
+            else:
+                previous, current = content
+                result = f"[마지막 응답이 수정되었습니다]\n{previous.text} -> {current.text}"
 
             await send(interaction, result)
 
@@ -290,10 +312,29 @@ class DiscordBot(discord.Client):
 
             await send(interaction, result)
 
+        @decorator_print
+        async def _print(interaction: Interaction) -> None:
+            log_callback(interaction)
+
+            conversation = self.get_conversation(interaction)
+            result = conversation.print()
+            await send(interaction, result)
+
+        @decorator_debug
+        async def _debug(interaction: Interaction) -> None:
+            log_callback(interaction)
+
+            conversation = self.get_conversation(interaction)
+            result = conversation.debug()
+            await send(interaction, result)
+
         @decorator_config
         @decorator_config_describe
         @decorator_config_choices
         async def _config(interaction: Interaction,
+                          reset: bool = False,
+                          user: str = None,
+                          ai: str = None,
                           creativity: str = None,
                           characteristic: str = None,
                           relationship: str = None) -> None:
@@ -302,6 +343,15 @@ class DiscordBot(discord.Client):
             conversation = self.get_conversation(interaction)
             content = []
 
+            if reset:
+                conversation.reset()
+                content.append(f"- 초기화: {reset}")
+            if user is not None:
+                conversation.rename(user, conversation.ai_name)
+                content.append(f"- 당신: {user}")
+            if ai is not None:
+                conversation.rename(conversation.user_name, ai)
+                content.append(f"- 상대: {ai}")
             if creativity is not None:
                 conversation.change_creativity(creativity)
                 content.append(f"- 창의성: {creativity}")
