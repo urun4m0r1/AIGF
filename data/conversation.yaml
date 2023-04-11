@@ -20,7 +20,7 @@ settings:
   sendersSwapped: false
   scrollAmount: 6
   engineName: 'text-davinci-003'
-  maxTokens: 150
+  maxTokens: 512
   topP: 1.0
   frequencyPenalty: 1.0
   presencePenalty: 1.0
